@@ -1,6 +1,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
-const SDL = @import("sdl2"); // Created in build.zig by using exe.root_module.addImport("sdl2", sdk.getWrapperModule());
+const SDL = @import("sdl2");
 
 const View = struct {
     port: SDL.RectangleF,
@@ -23,6 +23,7 @@ pub fn main() !void {
             return SDL.Error.SdlError;
         }
     }
+
     try SDL.init(SDL.InitFlags.everything);
     defer SDL.quit();
     var window = try SDL.createWindow(
@@ -46,8 +47,10 @@ pub fn main() !void {
             }
         }
 
-        try renderer.setColorRGB(0xF7, 0xA4, 0x1D);
         try renderer.clear();
+        try renderer.setColorRGB(0, 0, 0);
+        try renderer.fillRect(.{ .x = 20, .y = 20, .width = 200, .height = 200 });
+        try renderer.setColorRGB(0xF7, 0xA4, 0x1D);
 
         renderer.present();
     }
