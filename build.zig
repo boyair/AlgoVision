@@ -40,6 +40,8 @@ pub fn build(b: *std.Build) void {
     // Add "sdl2" package that exposes the SDL2 api (like SDL_Init or SDL_CreateWindow)
     exe.root_module.addImport("sdl2", sdk.getWrapperModule());
     exe.linkSystemLibrary("SDL2_image");
+    exe.linkSystemLibrary("SDL2_ttf");
+    exe.linkSystemLibrary("SDL2_mixer");
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
     // step when running `zig build`).
