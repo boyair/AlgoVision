@@ -1,5 +1,5 @@
 const std = @import("std");
-
+const Sdk = @import("SDL.zig/Sdk.zig");
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
 // runner.
@@ -9,12 +9,12 @@ pub fn build(b: *std.Build) void {
     // means any target is allowed, and the default is native. Other options
     // for restricting supported target set are available.
     const target = b.standardTargetOptions(.{});
+    const sdk = Sdk.init(b, null);
 
     // Standard optimization options allow the person running `zig build` to select
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall. Here we do not
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
-
     const lib = b.addStaticLibrary(.{
         .name = "visualiser",
         // In this case the main source file is merely a path, however, in more
@@ -35,7 +35,11 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    sdk.link(exe, .static); // link SDL2 as a static library
 
+    // Add "sdl2" package that exposes the SDL2 api (like SDL_Init or SDL_CreateWindow)
+    exe.root_module.addImport("sdl2", sdk.getWrapperModule());
+    exe.linkSystemLibrary("SDL2_image");
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
     // step when running `zig build`).
