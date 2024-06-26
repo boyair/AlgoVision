@@ -39,6 +39,7 @@ pub fn build(b: *std.Build) void {
 
     // Add "sdl2" package that exposes the SDL2 api (like SDL_Init or SDL_CreateWindow)
     exe.root_module.addImport("sdl2", sdk.getWrapperModule());
+    //link system installed sdl extra libs for proper linkage.
     exe.linkSystemLibrary("SDL2_image");
     exe.linkSystemLibrary("SDL2_ttf");
     exe.linkSystemLibrary("SDL2_mixer");
