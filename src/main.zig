@@ -19,6 +19,7 @@ pub fn main() !void {
     try SDL.init(SDL.InitFlags.everything);
     defer SDL.quit();
     try SDL.ttf.init();
+    defer SDL.ttf.quit();
 
     var window = try SDL.createWindow(
         "PC Visualliser",
@@ -34,7 +35,12 @@ pub fn main() !void {
     defer renderer.destroy();
     const font: SDL.ttf.Font = try SDL.ttf.openFont("ioveska.ttf", 100);
     defer font.close();
+    const loading: SDL.Surface = font.renderTextSolid("Loading", SDL.Color.white) catch try SDL.createRgbSurfaceWithFormat(32, 32, SDL.PixelFormatEnum.rgb888);
+    const loading_tex: SDL.Texture = try SDL.createTextureFromSurface(renderer, loading);
+    try renderer.copy(loading_tex, .{ .x = 0, .y = 200, .width = 1000, .height = 600 }, null);
+    renderer.present();
     heap.initRand();
+    try renderer.setColorRGB(0, 90, 0);
     try heap.initTextures(&font, renderer);
     defer heap.destroyTextures();
     defer window.destroy();
@@ -85,13 +91,14 @@ pub fn main() !void {
 
         try renderer.clear();
         try renderer.setColor(SDL.Color.black);
-        for (heap.mem_tex, 0..) |texture, idx| {
-            const column = idx % heap.rows;
-            const row = @divFloor(idx, heap.rows);
-            const possible_rect = cam_view.convert(.{ .x = @as(f32, @floatFromInt(row)) * 100.0, .y = @as(f32, @floatFromInt(column)) * 100.0, .width = 100, .height = 100 }) catch null;
-            if (possible_rect) |rect| {
-                try renderer.drawRect(convertSDLRect(rect));
-                try renderer.copy(texture, convertSDLRect(rect), null);
+
+        for (heap.batch_tex, 0..) |row, ir| {
+            for (row, 0..) |column, ic| {
+                const batch_rectF = cam_view.convert(.{ .x = @floatFromInt(ic * 800), .y = @floatFromInt(ir * 800), .width = 800, .height = 800 }) catch null;
+                if (batch_rectF) |rectF| {
+                    const rect: SDL.Rectangle = convertSDLRect(rectF);
+                    try renderer.copy(column, rect, null);
+                }
             }
         }
 
@@ -107,8 +114,4 @@ pub fn main() !void {
         }
         last_iteration_duration = std.time.nanoTimestamp() - start_time;
     }
-}
-
-test "zoom value" {
-    try std.testing.expect(@as(f32, @floatFromInt(2000000)) / 100_000_000.0 * (1.5 - 1.1) + 1.0 > 1.0);
 }
