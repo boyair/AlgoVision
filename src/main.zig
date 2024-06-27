@@ -1,25 +1,17 @@
-const builtin = @import("builtin");
 const std = @import("std");
 const SDL = @import("sdl2");
 const Vec2 = @import("Vec2.zig").Vec2;
 const View = @import("view.zig").View;
 const heap = @import("heap.zig");
-const convertSDLRect = @import("SDLex.zig").convertSDLRect;
+const SDLex = @import("SDLex.zig");
+const ZoomAnimation = @import("animation.zig").ZoomAnimation;
+const convertSDLRect = SDLex.convertSDLRect;
 
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 
 pub fn main() !void {
-    // prefer wayland over x11 when on linux
-    if (builtin.os.tag == .linux) {
-        if (!SDL.setHint("SDL_VIDEODRIVER", "wayland,x11")) {
-            std.debug.print("failed to hint wayland to sdl!!", .{});
-            return SDL.Error.SdlError;
-        }
-    }
-    try SDL.init(SDL.InitFlags.everything);
-    defer SDL.quit();
-    try SDL.ttf.init();
-    defer SDL.ttf.quit();
+    try SDLex.fullyInitSDL();
+    defer SDLex.fullyQuitSDL();
 
     var window = try SDL.createWindow(
         "PC Visualliser",
@@ -37,6 +29,7 @@ pub fn main() !void {
     defer font.close();
     const loading: SDL.Surface = font.renderTextSolid("Loading", SDL.Color.white) catch try SDL.createRgbSurfaceWithFormat(32, 32, SDL.PixelFormatEnum.rgb888);
     const loading_tex: SDL.Texture = try SDL.createTextureFromSurface(renderer, loading);
+    loading.destroy();
     try renderer.copy(loading_tex, .{ .x = 0, .y = 200, .width = 1000, .height = 600 }, null);
     renderer.present();
     heap.initRand();
@@ -46,7 +39,9 @@ pub fn main() !void {
     defer window.destroy();
 
     var cam_view = View.init(&window);
-
+    const animation_end = SDL.RectangleF{ .x = -500, .y = -500, .width = 10000, .height = 10000 };
+    var animation: ZoomAnimation = ZoomAnimation.init(cam_view.port, animation_end, 5_000_000_000);
+    //_ = animation;
     var last_iteration_duration: i128 = 0;
     var time_left_for_zoom: i128 = 0;
     const frame_time_ns: u64 = 10_000_000;
@@ -55,6 +50,8 @@ pub fn main() !void {
         const start_time = std.time.nanoTimestamp();
         const mouse_state = SDL.getMouseState();
         const mouse_pos: SDL.Point = .{ .x = mouse_state.x, .y = mouse_state.y };
+        if (!animation.done)
+            cam_view.port = animation.update(last_iteration_duration);
         while (SDL.pollEvent()) |ev| {
             switch (ev) {
                 .mouse_button_down => {
