@@ -1,5 +1,6 @@
 const std = @import("std");
 const SDL = @import("sdl2");
+const SDLex = @import("SDLex.zig");
 const Vec2 = @import("Vec2.zig").Vec2;
 const conertVecSize = @import("SDLex.zig").conertVecSize;
 
@@ -49,19 +50,48 @@ pub const View = struct {
             return;
 
         //turn values to floats to allow fractional offset and scaling calculations.
-        const win_sizeF = .{
-            .width = @as(f32, @floatFromInt(self.window_size.width)),
-            .height = @as(f32, @floatFromInt(self.window_size.height)),
-        };
+        const win_sizeF = conertVecSize(self.window_size);
         const save_rect: SDL.RectangleF = self.port;
         self.port.width /= scale;
         self.port.height /= scale;
         if (point) |p| {
-            self.port.x += (save_rect.width - self.port.width) * @as(f32, @floatFromInt(p.x)) / win_sizeF.width;
-            self.port.y += (save_rect.height - self.port.height) * @as(f32, @floatFromInt(p.y)) / win_sizeF.height;
+            self.port.x += (save_rect.width - self.port.width) * @as(f32, @floatFromInt(p.x)) / win_sizeF.x;
+            self.port.y += (save_rect.height - self.port.height) * @as(f32, @floatFromInt(p.y)) / win_sizeF.y;
         } else {
             self.port.x += (save_rect.width - self.port.width) / 2;
             self.port.y += (save_rect.height - self.port.height) / 2;
+        }
+    }
+    //TODO: make it work correctly
+    pub fn getZoomed(self: View, scale: f32, point: ?SDL.Point) SDL.RectangleF {
+        if (scale == 0) {
+            return self.port;
+        }
+        //turn values to floats to allow fractional offset and scaling calculations.
+        const win_sizeF = conertVecSize(self.window_size);
+        const save_rect: SDL.RectangleF = self.port;
+        var result = self.port;
+        result.width /= scale;
+        result.height /= scale;
+        if (point) |p| {
+            result.x += (save_rect.width - result.width) * @as(f32, @floatFromInt(p.x)) / win_sizeF.x;
+            result.y += (save_rect.height - result.height) * @as(f32, @floatFromInt(p.y)) / win_sizeF.y;
+        } else {
+            result.x += (save_rect.width - result.width) / 2;
+            result.y += (save_rect.height - result.height) / 2;
+        }
+        return result;
+    }
+    pub fn draw(self: View, rect: SDL.RectangleF, texture: SDL.Texture, renderer: SDL.Renderer) void {
+        const transformed = self.convert(rect) catch null;
+        if (transformed) |in_view| {
+            renderer.copy(texture, SDLex.convertSDLRect(in_view), null) catch unreachable;
+        }
+    }
+    pub fn fillRect(self: View, rect: SDL.RectangleF, renderer: SDL.Renderer) void {
+        const transformed = self.convert(rect) catch null;
+        if (transformed) |in_view| {
+            renderer.fillRect(SDLex.convertSDLRect(in_view)) catch unreachable;
         }
     }
 };

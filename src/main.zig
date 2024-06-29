@@ -5,7 +5,9 @@ const View = @import("view.zig").View;
 const heap = @import("heap.zig");
 const SDLex = @import("SDLex.zig");
 const ZoomAnimation = @import("animation.zig").ZoomAnimation;
-const convertSDLRect = SDLex.convertSDLRect;
+const design = @import("design.zig");
+const convertSDLRect = SDLex
+    .convertSDLRect;
 
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 
@@ -23,29 +25,47 @@ pub fn main() !void {
     );
     defer window.destroy();
 
+    const app_dir = try std.fs.selfExeDirPathAlloc(gpa.allocator());
+    defer gpa.allocator().free(app_dir);
+    const font_name = "/ioveska.ttf";
+    const font_path_length = app_dir.len + font_name.len;
+
+    var font_path: []u8 = try gpa.allocator().alloc(u8, font_path_length + 1);
+    defer gpa.allocator().free(font_path);
+
+    @memcpy(font_path[0..app_dir.len], app_dir);
+    @memcpy(font_path[app_dir.len..font_path_length], font_name);
+    font_path[font_path.len - 1] = 0;
+    const font_path_nul: [:0]u8 = font_path[0..font_path_length :0];
+    std.debug.print("{s}\n", .{font_path_nul});
     var renderer = try SDL.createRenderer(window, null, .{ .accelerated = true });
     defer renderer.destroy();
-    const font: SDL.ttf.Font = try SDL.ttf.openFont("ioveska.ttf", 100);
+    const font: SDL.ttf.Font = try SDL.ttf.openFont(font_path_nul, 100);
     defer font.close();
     const loading: SDL.Surface = font.renderTextSolid("Loading", SDL.Color.white) catch try SDL.createRgbSurfaceWithFormat(32, 32, SDL.PixelFormatEnum.rgb888);
     const loading_tex: SDL.Texture = try SDL.createTextureFromSurface(renderer, loading);
+    defer loading_tex.destroy();
     loading.destroy();
     try renderer.copy(loading_tex, .{ .x = 0, .y = 200, .width = 1000, .height = 600 }, null);
     renderer.present();
-    heap.initRand();
-    try renderer.setColorRGB(0, 90, 0);
+    heap.initIndex();
+    const my_mem = heap.alloc(6) catch null;
+    if (my_mem) |valid_mem| {
+        for (valid_mem) |mem| {
+            std.debug.print("{d}\n", .{mem});
+        }
+    }
+
     try heap.initTextures(&font, renderer);
     defer heap.destroyTextures();
-    defer window.destroy();
 
     var cam_view = View.init(&window);
-    const animation_end = SDL.RectangleF{ .x = -500, .y = -500, .width = 10000, .height = 10000 };
-    var animation: ZoomAnimation = ZoomAnimation.init(cam_view.port, animation_end, 5_000_000_000);
-    //_ = animation;
+    var animation: ZoomAnimation = ZoomAnimation.init(cam_view.port, cam_view.port, 0);
     var last_iteration_duration: i128 = 0;
     var time_left_for_zoom: i128 = 0;
     const frame_time_ns: u64 = 10_000_000;
     var dragging = false;
+    try renderer.setColor(design.BG_color);
     mainLoop: while (true) {
         const start_time = std.time.nanoTimestamp();
         const mouse_state = SDL.getMouseState();
@@ -65,15 +85,22 @@ pub fn main() !void {
                     }
                 },
                 .mouse_wheel => {
-                    const delta = ev.mouse_wheel.delta_y;
-                    cam_view.zoom(1.0 + @as(f32, @floatFromInt(delta)) / 10.0, mouse_pos);
+                    const delta: f32 = @floatFromInt(ev.mouse_wheel.delta_y);
+
+                    if (delta != 0)
+                        animation = ZoomAnimation.init(cam_view.port, cam_view.getZoomed(1.0 + delta / 2.0, mouse_pos), 200_000_000);
                 },
                 .mouse_motion => {
-                    if (dragging) {
+                    if (dragging and animation.done) {
                         const vec_mouse_delta: Vec2 = .{ .x = @floatFromInt(ev.mouse_motion.delta_x), .y = @floatFromInt(ev.mouse_motion.delta_y) };
                         const scaled_delta: Vec2 = cam_view.scale_vec_port_to_win(vec_mouse_delta);
                         cam_view.port.x -= scaled_delta.x;
                         cam_view.port.y -= scaled_delta.y;
+                        //handle drag during zoom animation.
+                        animation.start_state.x = cam_view.port.x;
+                        animation.start_state.y = cam_view.port.y;
+                        animation.end_state.x = cam_view.port.x;
+                        animation.end_state.y = cam_view.port.y;
                     }
                 },
                 .window => {
@@ -87,19 +114,9 @@ pub fn main() !void {
         }
 
         try renderer.clear();
-        try renderer.setColor(SDL.Color.black);
 
-        for (heap.batch_tex, 0..) |row, ir| {
-            for (row, 0..) |column, ic| {
-                const batch_rectF = cam_view.convert(.{ .x = @floatFromInt(ic * 800), .y = @floatFromInt(ir * 800), .width = 800, .height = 800 }) catch null;
-                if (batch_rectF) |rectF| {
-                    const rect: SDL.Rectangle = convertSDLRect(rectF);
-                    try renderer.copy(column, rect, null);
-                }
-            }
-        }
+        heap.draw(renderer, cam_view);
 
-        try renderer.setColorRGB(0, 90, 0);
         time_left_for_zoom -= last_iteration_duration;
         if (time_left_for_zoom < 0) {
             time_left_for_zoom = 0;
@@ -112,3 +129,6 @@ pub fn main() !void {
         last_iteration_duration = std.time.nanoTimestamp() - start_time;
     }
 }
+
+//TODO:
+//add ability to get/set a value from the heap
