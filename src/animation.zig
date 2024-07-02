@@ -1,5 +1,6 @@
 const SDL = @import("sdl2");
 const std = @import("std");
+const Action = @import("action.zig");
 const view = @import("view.zig").View;
 
 pub const ZoomAnimation = struct {
@@ -29,5 +30,17 @@ pub const ZoomAnimation = struct {
             .width = @floatCast((self.end_state.width - self.start_state.width) * fraction_passed + self.start_state.width),
             .height = @floatCast((self.end_state.height - self.start_state.height) * fraction_passed + self.start_state.height),
         };
+    }
+};
+
+pub const Animation = struct {
+    zoom_animation: ZoomAnimation,
+    action: Action.Action,
+    pub fn run(self: Animation, time_delta: i128, data: *anyopaque) void {
+        if (self.zoom_animation.done) {
+            self.action.do(data);
+        } else {
+            self.zoom_animation.update(time_delta);
+        }
     }
 };

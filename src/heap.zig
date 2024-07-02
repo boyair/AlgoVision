@@ -3,6 +3,7 @@ const View = @import("view.zig").View;
 const SDL = @import("sdl2");
 const SDLex = @import("SDLex.zig");
 const design = @import("design.zig").heap;
+const ZoomAnimation = @import("animation.zig").ZoomAnimation;
 pub const rows = 10;
 pub const columns = 10;
 //struct to simplify 2d indexing
@@ -125,32 +126,6 @@ fn initBatch(index: idx2D, font: *const SDL.ttf.Font, renderer: SDL.Renderer) !v
     try renderer.setTarget(last_target);
 }
 
-pub fn alloc(size: usize) HeapError![]const i64 {
-    var start_idx: usize = 0;
-    var end_idx: usize = 0;
-    var found: bool = false;
-    main: for (0..(rows * columns)) |Sidx| {
-        if (!availables[Sidx]) continue;
-
-        for (Sidx..(rows * columns)) |Eidx| {
-            if (!availables[Eidx])
-                break;
-
-            const true_end = Eidx + 1; // range is not inclusive
-            if (size <= true_end - Sidx) {
-                found = true;
-                start_idx = Sidx;
-                end_idx = true_end;
-                break :main;
-            }
-        }
-    }
-    if (!found)
-        return HeapError.MemoryNotAvailable;
-
-    return mem[start_idx..end_idx];
-}
-
 pub fn destroyTextures() void {
     for (batch_tex) |row| {
         for (row) |column| {
@@ -189,7 +164,7 @@ pub fn drawBatch(idx: idx2D, renderer: SDL.Renderer, view: View) void {
 
 //---------------------------------------------------
 //---------------------------------------------------
-//---------------------HELPERS-----------------------
+//-------------------INTERFACE-----------------------
 //---------------------------------------------------
 //---------------------------------------------------
 
@@ -204,24 +179,75 @@ pub fn get(idx: usize) HeapError!i64 {
     return mem[mem_idx.y][mem_idx.x];
 }
 
-//pub fn set(value: i64, idx: usize) HeapError!void {
-//    if (idx >= mem.len * mem[0].len) {
-//        return HeapError.OutOfRange;
-//    }
-//    const mem_idx = idx2D.init(idx, mem[0].len);
-//    if (availables[mem_idx.y][mem_idx.x] == false) {
-//        return HeapError.MemoryNotAvailable;
-//    }
-//    mem[mem_idx.y][mem_idx.x] = value;
-//
-//    //recreate texture for containing batch.
-//    const batch_idx = idx2D{.x = mem_idx.x / batch_size.width,.y = mem_idx.y / batch_size.height};
-//    batch_tex[batch_idx.y][batch_idx.x].destroy();
-//    initBatch(batch_idx, font , renderer);
-//}
+pub fn alloc(size: usize) HeapError![]const i64 {
+    var start_idx: usize = 0;
+    var end_idx: usize = 0;
+    var found: bool = false;
+    //var follow_animation = ZoomAnimation.init(cam_view.port, .{ .x = -500, .y = -500,.width = 1000,.height = 1000 }, 500_000_000);
 
+    main: for (0..(rows * columns)) |Sidx| {
+        if (!availables[Sidx]) continue;
+
+        for (Sidx..(rows * columns)) |Eidx| {
+            if (!availables[Eidx])
+                break;
+
+            const true_end = Eidx + 1; // range is not inclusive
+            if (size <= true_end - Sidx) {
+                found = true;
+                start_idx = Sidx;
+                end_idx = true_end;
+                break :main;
+            }
+        }
+    }
+    if (!found)
+        return HeapError.MemoryNotAvailable;
+
+    return mem[start_idx..end_idx];
+}
+
+//---------------------------------------------------
+//---------------------------------------------------
+//---------------------HELPERS-----------------------
+//---------------------------------------------------
+//---------------------------------------------------
 fn randomNum(seed: i64) i64 {
     const state: i64 = seed * 747796405 + 2891336453;
     const word: i64 = ((state >> @as(u6, @truncate(@as(u64, @intCast(state)) >> 28)) +% 4) ^ state) *% 277803737;
     return (word >> 22) ^ word;
+}
+
+//---------------------------------------------------
+//---------------------------------------------------
+//-----------------INTERNAL ABSTRACTIONS--------------
+//---------------------------------------------------
+//---------------------------------------------------
+
+fn findFreeRange(size: usize) HeapError!struct { start: usize, end: usize } {
+    var start_idx: usize = 0;
+    var end_idx: usize = 0;
+    var found: bool = false;
+    //var follow_animation = ZoomAnimation.init(cam_view.port, .{ .x = -500, .y = -500,.width = 1000,.height = 1000 }, 500_000_000);
+
+    main: for (0..(rows * columns)) |Sidx| {
+        if (!availables[Sidx]) continue;
+
+        for (Sidx..(rows * columns)) |Eidx| {
+            if (!availables[Eidx])
+                break;
+
+            const true_end = Eidx + 1; // range is not inclusive
+            if (size <= true_end - Sidx) {
+                found = true;
+                start_idx = Sidx;
+                end_idx = true_end;
+                break :main;
+            }
+        }
+    }
+
+    if (!found)
+        return HeapError.MemoryNotAvailable;
+    return .{ .start = start_idx, .end = end_idx };
 }
