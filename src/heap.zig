@@ -1,9 +1,11 @@
 const std = @import("std");
 const View = @import("view.zig").View;
 const SDL = @import("sdl2");
+const Operation = @import("operation.zig");
 const SDLex = @import("SDLex.zig");
 const design = @import("design.zig").heap;
 const ZoomAnimation = @import("animation.zig").ZoomAnimation;
+const gpa = std.heap.GeneralPurposeAllocator(.{}){};
 pub const rows = 10;
 pub const columns = 10;
 //struct to simplify 2d indexing
@@ -143,6 +145,7 @@ pub fn draw(renderer: SDL.Renderer, view: View) void {
     };
     const save_color = renderer.getColor() catch unreachable;
     renderer.setColor(design.color_BG) catch unreachable;
+    std.debug.print("color: {d},{d},{d}\n", .{ design.color_BG.r, design.color_BG.g, design.color_BG.b });
     view.fillRect(SDLex.convertSDLRect(full_rect), renderer);
     renderer.setColor(save_color) catch unreachable;
     for (0..batch_tex.len) |row| {
@@ -179,32 +182,13 @@ pub fn get(idx: usize) HeapError!i64 {
     return mem[mem_idx.y][mem_idx.x];
 }
 
+pub fn setBG(color: SDL.Color) void {
+    Operation.push(Operation.Operation{ .change_bg = color });
+}
+
 pub fn alloc(size: usize) HeapError![]const i64 {
-    var start_idx: usize = 0;
-    var end_idx: usize = 0;
-    var found: bool = false;
-    //var follow_animation = ZoomAnimation.init(cam_view.port, .{ .x = -500, .y = -500,.width = 1000,.height = 1000 }, 500_000_000);
-
-    main: for (0..(rows * columns)) |Sidx| {
-        if (!availables[Sidx]) continue;
-
-        for (Sidx..(rows * columns)) |Eidx| {
-            if (!availables[Eidx])
-                break;
-
-            const true_end = Eidx + 1; // range is not inclusive
-            if (size <= true_end - Sidx) {
-                found = true;
-                start_idx = Sidx;
-                end_idx = true_end;
-                break :main;
-            }
-        }
-    }
-    if (!found)
-        return HeapError.MemoryNotAvailable;
-
-    return mem[start_idx..end_idx];
+    const range = try findFreeRange(size);
+    return mem[range.start..range.end];
 }
 
 //---------------------------------------------------
@@ -220,7 +204,7 @@ fn randomNum(seed: i64) i64 {
 
 //---------------------------------------------------
 //---------------------------------------------------
-//-----------------INTERNAL ABSTRACTIONS--------------
+//--------------INTERNAL ABSTRACTIONS----------------
 //---------------------------------------------------
 //---------------------------------------------------
 

@@ -1,7 +1,6 @@
 const SDL = @import("sdl2");
 const std = @import("std");
 const Action = @import("action.zig");
-const view = @import("view.zig").View;
 
 pub const ZoomAnimation = struct {
     start_state: SDL.RectangleF,

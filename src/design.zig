@@ -1,8 +1,8 @@
 const SDL = @import("sdl2");
-pub const BG_color: SDL.Color = SDL.Color.rgb(0, 90, 0);
+pub var BG_color: SDL.Color = SDL.Color.rgb(0, 90, 0);
 
 pub const heap = struct {
-    pub const color_BG: SDL.Color = SDL.Color.black;
+    pub var color_BG: SDL.Color = SDL.Color.black;
     pub const color_taken: SDL.Color = SDL.Color.rgb(255, 0, 0);
     pub const color_free: SDL.Color = SDL.Color.rgb(255, 0, 0);
     pub const color_user: SDL.Color = SDL.Color.rgb(255, 0, 0);

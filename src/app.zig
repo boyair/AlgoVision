@@ -5,6 +5,7 @@ const Vec2 = @import("Vec2.zig").Vec2;
 const View = @import("view.zig").View;
 pub const heap = @import("heap.zig");
 const design = @import("design.zig");
+const Operation = @import("operation.zig");
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 
 const fps = 200;
@@ -26,14 +27,20 @@ pub const AppData = struct {
 
 //const data: AppData = undefined;
 
-var window: SDL.Window = undefined;
-var renderer: SDL.Renderer = undefined;
-var font: SDL.ttf.Font = undefined;
-var cam_view: View = undefined;
+pub var window: SDL.Window = undefined;
+pub var renderer: SDL.Renderer = undefined;
+pub var font: SDL.ttf.Font = undefined;
+pub var cam_view: View = undefined;
 var initiallized = false;
 var state: State = State.heap;
+var running_time: i128 = 0;
 
 pub fn init() !void {
+    if (initiallized) {
+        std.debug.print("tried to initiallize app more than once!", .{});
+        return;
+    }
+
     //  init basics
     try SDLex.fullyInitSDL();
     window = SDL.createWindow("Application", .{ .centered = {} }, .{ .centered = {} }, 1000, 1000, .{ .vis = .shown, .resizable = false, .borderless = false, .mouse_capture = true }) catch |err| {
@@ -57,9 +64,10 @@ pub fn init() !void {
 
 pub fn start() !void {
     var holding_right = false;
-
+    var last_iteration_time: i128 = 0;
     mainLoop: while (true) {
-        //handleState()
+        const start_time = std.time.nanoTimestamp();
+        Operation.performOperations(last_iteration_time, &cam_view);
         const mouse_state = SDL.getMouseState();
         const mouse_pos: SDL.Point = .{ .x = mouse_state.x, .y = mouse_state.y };
         while (SDL.pollEvent()) |ev| {
@@ -90,6 +98,9 @@ pub fn start() !void {
         try renderer.clear();
         heap.draw(renderer, cam_view);
         renderer.present();
+        const end_time = std.time.nanoTimestamp();
+        last_iteration_time = end_time - start_time;
+        running_time += last_iteration_time;
     }
 }
 
