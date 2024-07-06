@@ -3,7 +3,7 @@ const SDL = @import("sdl2");
 const SDLex = @import("SDLex.zig");
 const Vec2 = @import("Vec2.zig").Vec2;
 const View = @import("view.zig").View;
-pub const heap = @import("heap.zig");
+const heap = @import("heap/internal.zig");
 const design = @import("design.zig");
 const Operation = @import("operation.zig");
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -27,9 +27,9 @@ pub const AppData = struct {
 
 //const data: AppData = undefined;
 
+pub var operation_manager: Operation.Manager = undefined;
 pub var window: SDL.Window = undefined;
 pub var renderer: SDL.Renderer = undefined;
-pub var font: SDL.ttf.Font = undefined;
 pub var cam_view: View = undefined;
 var initiallized = false;
 var state: State = State.heap;
@@ -50,15 +50,16 @@ pub fn init() !void {
     renderer = try SDL.createRenderer(window, null, .{ .accelerated = true });
     try renderer.setColor(design.BG_color);
     cam_view = View.init(&window);
+    operation_manager = Operation.Manager.init();
 
     //init font
     const app_dir = try std.fs.selfExeDirPathAlloc(gpa.allocator());
     const font_path = try std.fmt.allocPrintZ(gpa.allocator(), "{s}/ioveska.ttf", .{app_dir});
-    font = try SDL.ttf.openFont(font_path, 100);
+    design.heap.font = try SDL.ttf.openFont(font_path, 100);
 
     //init heap
     heap.initRand();
-    try heap.initTextures(&font, renderer);
+    try heap.initTextures(&design.heap.font, renderer);
     initiallized = true;
 }
 
@@ -67,7 +68,7 @@ pub fn start() !void {
     var last_iteration_time: i128 = 0;
     mainLoop: while (true) {
         const start_time = std.time.nanoTimestamp();
-        Operation.performOperations(last_iteration_time, &cam_view);
+        operation_manager.update(last_iteration_time);
         const mouse_state = SDL.getMouseState();
         const mouse_pos: SDL.Point = .{ .x = mouse_state.x, .y = mouse_state.y };
         while (SDL.pollEvent()) |ev| {

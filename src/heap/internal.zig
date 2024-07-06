@@ -1,10 +1,10 @@
 const std = @import("std");
-const View = @import("view.zig").View;
 const SDL = @import("sdl2");
-const Operation = @import("operation.zig");
-const SDLex = @import("SDLex.zig");
-const design = @import("design.zig").heap;
-const ZoomAnimation = @import("animation.zig").ZoomAnimation;
+const View = @import("../view.zig").View;
+const Operation = @import("../operation.zig");
+const SDLex = @import("../SDLex.zig");
+const design = @import("../design.zig").heap;
+const ZoomAnimation = @import("../animation.zig").ZoomAnimation;
 const gpa = std.heap.GeneralPurposeAllocator(.{}){};
 pub const rows = 10;
 pub const columns = 10;
@@ -145,7 +145,7 @@ pub fn draw(renderer: SDL.Renderer, view: View) void {
     };
     const save_color = renderer.getColor() catch unreachable;
     renderer.setColor(design.color_BG) catch unreachable;
-    std.debug.print("color: {d},{d},{d}\n", .{ design.color_BG.r, design.color_BG.g, design.color_BG.b });
+    //std.debug.print("color: {d},{d},{d}\n", .{ design.color_BG.r, design.color_BG.g, design.color_BG.b });
     view.fillRect(SDLex.convertSDLRect(full_rect), renderer);
     renderer.setColor(save_color) catch unreachable;
     for (0..batch_tex.len) |row| {
@@ -186,6 +186,15 @@ pub fn setBG(color: SDL.Color) void {
     Operation.push(Operation.Operation{ .change_bg = color });
 }
 
+pub fn set(idx: usize, value: i64, renderer: SDL.Renderer) !void {
+    if (idx >= mem.len)
+        return HeapError.OutOfRange;
+    mem[idx] = value;
+    //recreate texture of the batch containing the value.
+    const owning_batch = batchOf(idx);
+    batch_tex[owning_batch.y][owning_batch.x].destroy();
+    try initBatch(owning_batch, &design.font, renderer);
+}
 pub fn alloc(size: usize) HeapError![]const i64 {
     const range = try findFreeRange(size);
     return mem[range.start..range.end];
@@ -207,6 +216,23 @@ fn randomNum(seed: i64) i64 {
 //--------------INTERNAL ABSTRACTIONS----------------
 //---------------------------------------------------
 //---------------------------------------------------
+
+fn batchOf(mem_idx: usize) idx2D {
+    const idx_2d: idx2D = idx2D.init(mem_idx, columns);
+    return .{ .x = @divFloor(idx_2d.x, batch_size.width), .y = @divFloor(idx_2d.y, batch_size.height) };
+}
+
+pub fn blockLocation(block_idx: usize) SDL.RectangleF {
+    const idx_2d = idx2D.init(block_idx, columns);
+    const rect = SDL.Rectangle{
+        .x = @intCast(design.position.x + idx_2d.x * (design.block_size.width + design.padding_size.width)),
+        .y = @intCast(design.position.y + idx_2d.y * (design.block_size.height + design.padding_size.width)),
+        .width = @intCast(design.full_block_size.width),
+        .height = @intCast(design.full_block_size.height),
+    };
+    std.debug.print("width: {d}", .{SDLex.convertSDLRect(rect).width});
+    return SDLex.convertSDLRect(rect);
+}
 
 fn findFreeRange(size: usize) HeapError!struct { start: usize, end: usize } {
     var start_idx: usize = 0;

@@ -56,3 +56,10 @@ pub fn convertSDLRect(original: anytype) if (@TypeOf(original) == SDL.RectangleF
     }
     @compileError("ConvertSDLRect expects a rect type\n");
 }
+
+pub fn compareRect(rect1: anytype, rect2: anytype) bool {
+    return rect1.x == rect2.x and
+        rect1.y == rect2.y and
+        rect1.width == rect2.width and
+        rect1.height == rect2.height;
+}

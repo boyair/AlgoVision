@@ -52,6 +52,7 @@ pub const View = struct {
             self.port.width = @max(self.port.width, min.x);
             self.port.height = @max(self.port.height, min.y);
         }
+        std.debug.print("{d}, {d}\n", .{ self.port.width, self.port.height });
         if (self.max_size) |max| {
             self.port.width = @min(self.port.width, max.x);
             self.port.height = @min(self.port.height, max.y);
