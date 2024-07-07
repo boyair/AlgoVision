@@ -55,15 +55,11 @@ fn initAvailability() void {
     const time: usize = @intCast(std.time.timestamp());
     var cur_val_set = false;
     for (0..availables.len) |idx| {
-        availables[idx] = false;
+        availables[idx] = cur_val_set;
 
         //flip value on random occasion
         if (@rem(randomNum(@intCast(time + idx)), columns) == 1)
             cur_val_set = !cur_val_set;
-    }
-    //test
-    for (4..10) |i| {
-        availables[i] = true;
     }
 }
 
@@ -75,8 +71,10 @@ fn initAvailability() void {
 
 const batch_size: SDL.Size = .{ .width = std.math.sqrt(rows), .height = std.math.sqrt(columns) };
 pub var batch_tex: [rows / batch_size.width + 1][columns / batch_size.height + 1]SDL.Texture = undefined; // textures of the numbers batched for performance
-
+var board_texture: SDL.Texture = undefined;
 pub fn initTextures(font: *const SDL.ttf.Font, renderer: SDL.Renderer) !void {
+    board_texture = try SDL.createTexture(renderer, SDL.Texture.Format.rgba8888, SDL.Texture.Access.target, design.block.full_size.width * columns, design.block.full_size.height * rows);
+
     for (0..batch_tex.len) |row| {
         for (0..batch_tex[0].len) |column| {
             try initBatch(.{ .y = row, .x = column }, font, renderer);
@@ -88,23 +86,17 @@ fn initBatch(index: idx2D, font: *const SDL.ttf.Font, renderer: SDL.Renderer) !v
     //make buffers for texture creation.
     var surf: SDL.Surface = undefined;
     var text_buffer: [12]u8 = undefined;
-
     //initiallize texture to draw on
     const last_target = renderer.getTarget();
 
-    const final_block_size =
-        .{
-        .width = @as(usize, batch_size.width * (design.block_size.width + design.padding_size.width)),
-        .height = @as(usize, batch_size.height * (design.block_size.height + design.padding_size.height)),
-    };
     batch_tex[index.y][index.x] =
-        try SDL.createTexture(renderer, SDL.Texture.Format.rgba8888, .target, final_block_size.width, final_block_size.height);
+        try SDL.createTexture(renderer, SDL.Texture.Format.rgba8888, .target, design.block.full_size.width * batch_size.width, design.block.full_size.height * batch_size.height);
     try batch_tex[index.y][index.x].setBlendMode(SDL.BlendMode.blend);
     try renderer.setTarget(batch_tex[index.y][index.x]);
 
     //memory section to use based on batch_index
     const mem_start: idx2D = .{ .x = @intCast(batch_size.width * index.x), .y = @intCast(batch_size.height * index.y) };
-
+    const original_renderer_color = try SDL.Renderer.getColor(renderer);
     for (mem_start.y..mem_start.y + batch_size.height) |row| {
         for (mem_start.x..mem_start.x + batch_size.width) |column| {
             const idx2 = idx2D{ .x = column, .y = row };
@@ -113,18 +105,31 @@ fn initBatch(index: idx2D, font: *const SDL.ttf.Font, renderer: SDL.Renderer) !v
             if (row >= rows or column >= columns)
                 continue;
 
-            const num_str = std.fmt.bufPrintZ(&text_buffer, "{d:>4}", .{mem[idx1]}) catch "???";
-            const color: SDL.Color = if (availables[idx1]) SDL.Color.white else SDL.Color.red;
+            const num_str = std.fmt.bufPrintZ(&text_buffer, "{d:>5}", .{mem[idx1]}) catch "???";
+            const color: SDL.Color = if (availables[idx1]) design.block.free.fg else design.block.taken.fg;
             surf = font.renderTextBlended(num_str, color) catch handle: {
                 std.debug.print("failed to load surface for texture\npossible used bad font.\n", .{});
                 break :handle try SDL.createRgbSurfaceWithFormat(32, 32, SDL.PixelFormatEnum.rgb888);
             };
             const texture = try SDL.createTextureFromSurface(renderer, surf);
-            try renderer.copy(texture, .{ .x = @intCast((design.padding_size.width + design.block_size.width) * (column - mem_start.x)), .y = @intCast((design.padding_size.height + design.block_size.height) * (row - mem_start.y)), .width = design.block_size.width, .height = design.block_size.height }, null);
+            var block_rect = SDLex.convertSDLRect(blockRect(idx1));
+            block_rect.x -= @intCast(index.x * batch_size.width * design.block.full_size.width);
+            block_rect.y -= @intCast(index.y * batch_size.height * design.block.full_size.height);
+
+            //std.debug.print("block rect: {d},{d},{d},{d}\n", block_rect);
+            try renderer.setColor(if (availables[idx1]) design.block.free.bg else design.block.taken.bg);
+            try renderer.fillRect(block_rect);
+            block_rect.x += design.block.padding.width / 2;
+            block_rect.y += design.block.padding.height / 2;
+            block_rect.width = design.block.size.width;
+            block_rect.height = design.block.size.height;
+
+            try renderer.copy(texture, block_rect, null);
             surf.destroy();
             texture.destroy();
         }
     }
+    try renderer.setColor(original_renderer_color);
     try renderer.setTarget(last_target);
 }
 
@@ -137,32 +142,50 @@ pub fn destroyTextures() void {
 }
 
 pub fn draw(renderer: SDL.Renderer, view: View) void {
-    const full_rect = SDL.Rectangle{
-        .x = design.position.x - design.padding_size.width / 2,
-        .y = design.position.y - design.padding_size.height / 2,
-        .width = (design.block_size.width + design.padding_size.width) / 1 * columns,
-        .height = (design.block_size.height + design.padding_size.height) / 1 * rows,
-    };
-    const save_color = renderer.getColor() catch unreachable;
-    renderer.setColor(design.color_BG) catch unreachable;
-    //std.debug.print("color: {d},{d},{d}\n", .{ design.color_BG.r, design.color_BG.g, design.color_BG.b });
-    view.fillRect(SDLex.convertSDLRect(full_rect), renderer);
-    renderer.setColor(save_color) catch unreachable;
+    const target_save = renderer.getTarget();
+    renderer.setTarget(board_texture) catch unreachable;
     for (0..batch_tex.len) |row| {
         for (0..batch_tex[0].len) |column| {
             drawBatch(.{ .y = row, .x = column }, renderer, view);
         }
     }
+    renderer.setTarget(target_save) catch unreachable;
+    view.draw(.{ .x = 0, .y = 0, .width = design.block.full_size.width * columns, .height = design.block.full_size.height * rows }, board_texture, renderer);
+
+    const save_color = renderer.getColor() catch unreachable;
+    renderer.setColor(design.block.grid_color) catch unreachable;
+    for (0..rows + 1) |row| {
+        const rect = SDL.Rectangle{
+            .x = design.position.x,
+            .y = @intCast(row * design.block.full_size.height),
+            .width = @intCast(design.block.full_size.width * columns + design.block.padding.width / 2),
+            .height = design.block.padding.height / 2,
+        };
+
+        view.fillRect(SDLex.convertSDLRect(rect), renderer);
+    }
+    for (0..columns + 1) |column| {
+        const rect = SDL.Rectangle{
+            .x = @intCast(column * design.block.full_size.width),
+            .y = design.position.y,
+            .width = design.block.padding.width / 2,
+            .height = @intCast(design.block.full_size.height * rows),
+        };
+        view.fillRect(SDLex.convertSDLRect(rect), renderer);
+    }
+
+    renderer.setColor(save_color) catch unreachable;
 }
 
 pub fn drawBatch(idx: idx2D, renderer: SDL.Renderer, view: View) void {
     const batch_rect = SDL.RectangleF{
-        .x = @floatFromInt(design.position.x + idx.x * (design.block_size.width + design.padding_size.width) * batch_size.width),
-        .y = @floatFromInt(design.position.y + idx.y * (design.block_size.height + design.padding_size.height) * batch_size.height),
-        .width = @floatFromInt((design.block_size.width + design.padding_size.width) * batch_size.width),
-        .height = @floatFromInt((design.block_size.height + design.padding_size.height) * batch_size.height),
+        .x = @floatFromInt(idx.x * (design.block.full_size.width) * batch_size.width),
+        .y = @floatFromInt(idx.y * (design.block.full_size.height) * batch_size.height),
+        .width = @floatFromInt((design.block.full_size.width) * batch_size.width),
+        .height = @floatFromInt((design.block.full_size.height) * batch_size.height),
     };
-    view.draw(batch_rect, batch_tex[idx.y][idx.x], renderer);
+    _ = view;
+    renderer.copy(batch_tex[idx.y][idx.x], SDLex.convertSDLRect(batch_rect), null) catch unreachable;
 }
 
 //---------------------------------------------------
@@ -222,15 +245,14 @@ fn batchOf(mem_idx: usize) idx2D {
     return .{ .x = @divFloor(idx_2d.x, batch_size.width), .y = @divFloor(idx_2d.y, batch_size.height) };
 }
 
-pub fn blockLocation(block_idx: usize) SDL.RectangleF {
+pub fn blockRect(block_idx: usize) SDL.RectangleF {
     const idx_2d = idx2D.init(block_idx, columns);
     const rect = SDL.Rectangle{
-        .x = @intCast(design.position.x + idx_2d.x * (design.block_size.width + design.padding_size.width)),
-        .y = @intCast(design.position.y + idx_2d.y * (design.block_size.height + design.padding_size.width)),
-        .width = @intCast(design.full_block_size.width),
-        .height = @intCast(design.full_block_size.height),
+        .x = @intCast(design.position.x + idx_2d.x * design.block.full_size.width),
+        .y = @intCast(design.position.y + idx_2d.y * design.block.full_size.height),
+        .width = @intCast(design.block.full_size.width),
+        .height = @intCast(design.block.full_size.height),
     };
-    std.debug.print("width: {d}", .{SDLex.convertSDLRect(rect).width});
     return SDLex.convertSDLRect(rect);
 }
 
