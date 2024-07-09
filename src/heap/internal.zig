@@ -8,6 +8,17 @@ const ZoomAnimation = @import("../animation.zig").ZoomAnimation;
 const gpa = std.heap.GeneralPurposeAllocator(.{}){};
 pub const rows = 100;
 pub const columns = 100;
+const Ownership = enum(u8) {
+    free, //block is available for alocation.
+    taken, // block used by another program.
+    user, // allocated by user and can be used.
+
+};
+const block = struct {
+    val: i64,
+    owner: Ownership,
+};
+
 //struct to simplify 2d indexing
 const idx2D = struct {
     x: usize = 0, //2nd index
@@ -28,7 +39,7 @@ const HeapError = error{
     MemoryNotAllocated,
 };
 
-pub var mem: [rows * columns]i64 = undefined;
+pub var mem: [rows * columns]block = undefined;
 pub var availables: [mem.len]bool = undefined;
 
 //initiallize heap with random values in range 0 - 999;
@@ -38,7 +49,7 @@ pub fn initRand() void {
     for (0..mem.len) |idx| {
         const random_neg: i64 = @rem(randomNum(@intCast(time + idx)), 10000); // always positive
         const random_pos: i64 = @rem(randomNum(@intCast((time + idx) * 2)), 10000) * -1; // always negative
-        mem[idx] = @intCast(random_neg + random_pos);
+        mem[idx].val = @intCast(random_neg + random_pos);
     }
     initAvailability();
 }
@@ -55,7 +66,7 @@ fn initAvailability() void {
     const time: usize = @intCast(std.time.timestamp());
     var cur_val_set = false;
     for (0..availables.len) |idx| {
-        availables[idx] = cur_val_set;
+        mem[idx].owner = if (cur_val_set) Ownership.taken else Ownership.free;
 
         //flip value on random occasion
         if (@rem(randomNum(@intCast(time + idx)), columns) == 1)
@@ -102,8 +113,8 @@ fn initBatch(index: idx2D, font: *const SDL.ttf.Font, renderer: SDL.Renderer) !v
             if (row >= rows or column >= columns)
                 continue;
 
-            const num_str = std.fmt.bufPrintZ(&text_buffer, "{d:>5}", .{mem[idx1]}) catch "???";
-            const color: SDL.Color = if (availables[idx1]) design.block.free.fg else design.block.taken.fg;
+            const num_str = std.fmt.bufPrintZ(&text_buffer, "{d:>5}", .{mem[idx1].val}) catch "???";
+            const color: SDL.Color = if (mem[idx1].owner == Ownership.free) design.block.free.fg else design.block.taken.fg;
             surf = font.renderTextBlended(num_str, color) catch handle: {
                 std.debug.print("failed to load surface for texture\npossible used bad font.\n", .{});
                 break :handle try SDL.createRgbSurfaceWithFormat(32, 32, SDL.PixelFormatEnum.rgb888);
@@ -114,7 +125,7 @@ fn initBatch(index: idx2D, font: *const SDL.ttf.Font, renderer: SDL.Renderer) !v
             block_rect.y -= @intCast(index.y * batch_size.height * design.block.full_size.height + 1);
 
             //std.debug.print("block rect: {d},{d},{d},{d}\n", block_rect);
-            try renderer.setColor(if (availables[idx1]) design.block.free.bg else design.block.taken.bg);
+            try renderer.setColor(if (mem[idx1].owner == Ownership.free) design.block.free.bg else design.block.taken.bg);
             try renderer.fillRect(block_rect);
             block_rect.x += design.block.padding.width / 2;
             block_rect.y += design.block.padding.height / 2;
@@ -210,7 +221,7 @@ pub fn setBG(color: SDL.Color) void {
 pub fn set(idx: usize, value: i64, renderer: SDL.Renderer) !void {
     if (idx >= mem.len)
         return HeapError.OutOfRange;
-    mem[idx] = value;
+    mem[idx].val = value;
     //recreate texture of the batch containing the value.
     const owning_batch = batchOf(idx);
     batch_tex[owning_batch.y][owning_batch.x].destroy();
