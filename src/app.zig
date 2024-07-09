@@ -8,8 +8,8 @@ const design = @import("design.zig");
 const Operation = @import("operation.zig");
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 
-const fps = 200;
-const frame_time_nano = 1_000_000_000 / 200;
+const fps = 2000;
+const frame_time_nano = 1_000_000_000 / fps;
 
 const State = enum {
     heap,
@@ -99,6 +99,12 @@ pub fn start() !void {
         try renderer.clear();
         heap.draw(renderer, cam_view);
         renderer.present();
+
+        const sleep_time: i128 = frame_time_nano - (std.time.nanoTimestamp() - start_time);
+        if (sleep_time > 0) {
+            std.debug.print("sleep: {d} \n", .{sleep_time});
+            std.time.sleep(@intCast(sleep_time));
+        }
         const end_time = std.time.nanoTimestamp();
         last_iteration_time = end_time - start_time;
         running_time += last_iteration_time;

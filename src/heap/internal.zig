@@ -6,8 +6,8 @@ const SDLex = @import("../SDLex.zig");
 const design = @import("../design.zig").heap;
 const ZoomAnimation = @import("../animation.zig").ZoomAnimation;
 const gpa = std.heap.GeneralPurposeAllocator(.{}){};
-pub const rows = 10;
-pub const columns = 10;
+pub const rows = 100;
+pub const columns = 100;
 //struct to simplify 2d indexing
 const idx2D = struct {
     x: usize = 0, //2nd index
@@ -71,10 +71,7 @@ fn initAvailability() void {
 
 const batch_size: SDL.Size = .{ .width = std.math.sqrt(rows), .height = std.math.sqrt(columns) };
 pub var batch_tex: [rows / batch_size.width + 1][columns / batch_size.height + 1]SDL.Texture = undefined; // textures of the numbers batched for performance
-var board_texture: SDL.Texture = undefined;
 pub fn initTextures(font: *const SDL.ttf.Font, renderer: SDL.Renderer) !void {
-    board_texture = try SDL.createTexture(renderer, SDL.Texture.Format.rgba8888, SDL.Texture.Access.target, design.block.full_size.width * columns, design.block.full_size.height * rows);
-
     for (0..batch_tex.len) |row| {
         for (0..batch_tex[0].len) |column| {
             try initBatch(.{ .y = row, .x = column }, font, renderer);
@@ -113,8 +110,8 @@ fn initBatch(index: idx2D, font: *const SDL.ttf.Font, renderer: SDL.Renderer) !v
             };
             const texture = try SDL.createTextureFromSurface(renderer, surf);
             var block_rect = SDLex.convertSDLRect(blockRect(idx1));
-            block_rect.x -= @intCast(index.x * batch_size.width * design.block.full_size.width);
-            block_rect.y -= @intCast(index.y * batch_size.height * design.block.full_size.height);
+            block_rect.x -= @intCast(index.x * batch_size.width * design.block.full_size.width + 1);
+            block_rect.y -= @intCast(index.y * batch_size.height * design.block.full_size.height + 1);
 
             //std.debug.print("block rect: {d},{d},{d},{d}\n", block_rect);
             try renderer.setColor(if (availables[idx1]) design.block.free.bg else design.block.taken.bg);
@@ -129,6 +126,28 @@ fn initBatch(index: idx2D, font: *const SDL.ttf.Font, renderer: SDL.Renderer) !v
             texture.destroy();
         }
     }
+    //draw grid:
+    try renderer.setColor(design.block.grid_color);
+    for (0..batch_size.height + 1) |row| {
+        const rect = SDL.Rectangle{
+            .x = 0,
+            .y = @intCast(@as(c_int, @intCast(row * design.block.full_size.height)) - design.block.padding.height / 4),
+            .width = @intCast(design.block.full_size.width * batch_size.width + design.block.padding.width),
+            .height = design.block.padding.height / 2,
+        };
+
+        try renderer.fillRect(rect);
+    }
+    for (0..batch_size.width + 1) |column| {
+        const rect = SDL.Rectangle{
+            .y = 0,
+            .x = @intCast(@as(c_int, @intCast(column * design.block.full_size.width)) - design.block.padding.width / 4),
+            .height = @intCast(design.block.full_size.height * batch_size.height + design.block.padding.height),
+            .width = design.block.padding.width / 2,
+        };
+
+        try renderer.fillRect(rect);
+    }
     try renderer.setColor(original_renderer_color);
     try renderer.setTarget(last_target);
 }
@@ -142,50 +161,29 @@ pub fn destroyTextures() void {
 }
 
 pub fn draw(renderer: SDL.Renderer, view: View) void {
-    const target_save = renderer.getTarget();
-    renderer.setTarget(board_texture) catch unreachable;
     for (0..batch_tex.len) |row| {
         for (0..batch_tex[0].len) |column| {
             drawBatch(.{ .y = row, .x = column }, renderer, view);
         }
     }
-    renderer.setTarget(target_save) catch unreachable;
-    view.draw(.{ .x = 0, .y = 0, .width = design.block.full_size.width * columns, .height = design.block.full_size.height * rows }, board_texture, renderer);
 
     const save_color = renderer.getColor() catch unreachable;
     renderer.setColor(design.block.grid_color) catch unreachable;
-    for (0..rows + 1) |row| {
-        const rect = SDL.Rectangle{
-            .x = design.position.x,
-            .y = @intCast(row * design.block.full_size.height),
-            .width = @intCast(design.block.full_size.width * columns + design.block.padding.width / 2),
-            .height = design.block.padding.height / 2,
-        };
-
-        view.fillRect(SDLex.convertSDLRect(rect), renderer);
-    }
-    for (0..columns + 1) |column| {
-        const rect = SDL.Rectangle{
-            .x = @intCast(column * design.block.full_size.width),
-            .y = design.position.y,
-            .width = design.block.padding.width / 2,
-            .height = @intCast(design.block.full_size.height * rows),
-        };
-        view.fillRect(SDLex.convertSDLRect(rect), renderer);
-    }
 
     renderer.setColor(save_color) catch unreachable;
 }
 
 pub fn drawBatch(idx: idx2D, renderer: SDL.Renderer, view: View) void {
     const batch_rect = SDL.RectangleF{
-        .x = @floatFromInt(idx.x * (design.block.full_size.width) * batch_size.width),
-        .y = @floatFromInt(idx.y * (design.block.full_size.height) * batch_size.height),
+        .x = @floatFromInt(idx.x * design.block.full_size.width * batch_size.width),
+        .y = @floatFromInt(idx.y * design.block.full_size.height * batch_size.height),
         .width = @floatFromInt((design.block.full_size.width) * batch_size.width),
         .height = @floatFromInt((design.block.full_size.height) * batch_size.height),
     };
-    _ = view;
-    renderer.copy(batch_tex[idx.y][idx.x], SDLex.convertSDLRect(batch_rect), null) catch unreachable;
+    var converted_rect = SDLex.convertSDLRect(view.convert(batch_rect) catch return);
+    converted_rect.width += 1;
+    converted_rect.height += 1;
+    renderer.copy(batch_tex[idx.y][idx.x], converted_rect, null) catch unreachable;
 }
 
 //---------------------------------------------------
@@ -248,7 +246,7 @@ fn batchOf(mem_idx: usize) idx2D {
 pub fn blockRect(block_idx: usize) SDL.RectangleF {
     const idx_2d = idx2D.init(block_idx, columns);
     const rect = SDL.Rectangle{
-        .x = @intCast(design.position.x + idx_2d.x * design.block.full_size.width),
+        .x = @intCast(design.position.x + @as(c_int, @intCast(idx_2d.x)) * design.block.full_size.width),
         .y = @intCast(design.position.y + idx_2d.y * design.block.full_size.height),
         .width = @intCast(design.block.full_size.width),
         .height = @intCast(design.block.full_size.height),
