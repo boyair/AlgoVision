@@ -102,7 +102,6 @@ pub fn start() !void {
 
         const sleep_time: i128 = frame_time_nano - (std.time.nanoTimestamp() - start_time);
         if (sleep_time > 0) {
-            std.debug.print("sleep: {d} \n", .{sleep_time});
             std.time.sleep(@intCast(sleep_time));
         }
         const end_time = std.time.nanoTimestamp();
