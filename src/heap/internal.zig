@@ -126,27 +126,43 @@ fn initBatch(index: idx2D, font: *const SDL.ttf.Font, renderer: SDL.Renderer) !v
             texture.destroy();
         }
     }
+
     //draw grid:
+    const max_width = design.block.full_size.width * columns;
+    const max_height = design.block.full_size.height * rows;
+
     try renderer.setColor(design.block.grid_color);
     for (0..batch_size.height + 1) |row| {
-        const rect = SDL.Rectangle{
+        var rect = SDL.Rectangle{
             .x = 0,
             .y = @intCast(@as(c_int, @intCast(row * design.block.full_size.height)) - design.block.padding.height / 4),
             .width = @intCast(design.block.full_size.width * batch_size.width + design.block.padding.width),
             .height = design.block.padding.height / 2,
         };
 
-        try renderer.fillRect(rect);
+        //prevent grid drawing on empty texture
+        const chunck_limit_width = max_width - batch_size.width * design.block.full_size.width * index.x;
+        const chunck_limit_height = max_height - batch_size.height * design.block.full_size.height * index.y;
+        rect.width = @intCast(@min(chunck_limit_width, @as(usize, @intCast(rect.width))));
+
+        if (chunck_limit_height > rect.y)
+            try renderer.fillRect(rect);
     }
+
     for (0..batch_size.width + 1) |column| {
-        const rect = SDL.Rectangle{
+        var rect = SDL.Rectangle{
             .y = 0,
             .x = @intCast(@as(c_int, @intCast(column * design.block.full_size.width)) - design.block.padding.width / 4),
             .height = @intCast(design.block.full_size.height * batch_size.height + design.block.padding.height),
             .width = design.block.padding.width / 2,
         };
+        //prevent grid drawing on empty texture
+        const chunck_limit_width = max_width - batch_size.width * design.block.full_size.width * index.x;
+        const chunck_limit_height = max_height - batch_size.height * design.block.full_size.height * index.y;
+        rect.height = @intCast(@min(chunck_limit_height, @as(usize, @intCast(rect.height))));
 
-        try renderer.fillRect(rect);
+        if (rect.x < chunck_limit_width)
+            try renderer.fillRect(rect);
     }
     try renderer.setColor(original_renderer_color);
     try renderer.setTarget(last_target);
