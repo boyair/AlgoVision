@@ -19,11 +19,10 @@ pub const heap = struct {
             pub const fg: SDL.Color = SDL.Color.red;
             pub const bg: SDL.Color = SDL.Color.white;
         };
+        pub const user = struct {
+            pub const fg: SDL.Color = SDL.Color.red;
+            pub const bg: SDL.Color = SDL.Color.white;
+        };
     };
-    pub var color_BG: SDL.Color = SDL.Color.black;
-    pub const color_taken: SDL.Color = SDL.Color.red;
-    pub const color_free: SDL.Color = SDL.Color.white;
-    pub const color_user: SDL.Color = undefined;
     pub const position: SDL.Point = .{ .x = 0, .y = 0 };
-    pub const block_size: SDL.Size = .{ .width = 200, .height = 100 };
 };

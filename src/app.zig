@@ -16,17 +16,6 @@ const State = enum {
     stack,
 };
 
-pub const AppData = struct {
-    window: SDL.Window,
-    renderer: SDL.Renderer,
-
-    font: SDL.ttf.Font,
-    initiallized: bool = false,
-    state: State,
-};
-
-//const data: AppData = undefined;
-
 pub var operation_manager: Operation.Manager = undefined;
 pub var window: SDL.Window = undefined;
 pub var renderer: SDL.Renderer = undefined;
@@ -55,11 +44,17 @@ pub fn init() !void {
     //init font
     const app_dir = try std.fs.selfExeDirPathAlloc(gpa.allocator());
     const font_path = try std.fmt.allocPrintZ(gpa.allocator(), "{s}/ioveska.ttf", .{app_dir});
-    design.heap.font = try SDL.ttf.openFont(font_path, 100);
+    design.heap.font = try SDL.ttf.openFont(font_path, 200);
+
+    //loading screen
+    const loading_surf = try design.heap.font.renderTextSolid("Loading...", SDL.Color.rgb(255, 255, 255));
+    const loading_tex = try SDL.createTextureFromSurface(renderer, loading_surf);
+    try renderer.copy(loading_tex, .{ .x = 0, .y = 200, .width = 1000, .height = 600 }, null);
+    renderer.present();
 
     //init heap
     heap.initRand();
-    try heap.initTextures(&design.heap.font, renderer);
+    try heap.initTextures(renderer);
     initiallized = true;
 }
 
@@ -90,7 +85,8 @@ pub fn start() !void {
                 },
                 .mouse_wheel => {
                     const delta: f32 = @floatFromInt(ev.mouse_wheel.delta_y);
-                    cam_view.zoom(1.0 + delta / 8.0, mouse_pos);
+                    const zoomed_port = cam_view.getZoomed(1.0 + delta / 8.0, mouse_pos);
+                    cam_view.port = if (!cam_view.offLimits(zoomed_port)) zoomed_port else cam_view.port;
                 },
                 .quit => break :mainLoop,
                 else => {},

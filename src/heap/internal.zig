@@ -6,8 +6,8 @@ const SDLex = @import("../SDLex.zig");
 const design = @import("../design.zig").heap;
 const ZoomAnimation = @import("../animation.zig").ZoomAnimation;
 const gpa = std.heap.GeneralPurposeAllocator(.{}){};
-pub const rows = 100;
-pub const columns = 100;
+pub const rows = 50;
+pub const columns = 50;
 const Ownership = enum(u8) {
     free, //block is available for alocation.
     taken, // block used by another program.
@@ -46,10 +46,10 @@ pub var availables: [mem.len]bool = undefined;
 pub fn initRand() void {
     //initiallize values
     const time: usize = @intCast(std.time.timestamp());
-    for (0..mem.len) |idx| {
+    for (&mem, 0..) |*blk, idx| {
         const random_neg: i64 = @rem(randomNum(@intCast(time + idx)), 10000); // always positive
         const random_pos: i64 = @rem(randomNum(@intCast((time + idx) * 2)), 10000) * -1; // always negative
-        mem[idx].val = @intCast(random_neg + random_pos);
+        blk.val = @intCast(random_neg + random_pos);
     }
     initAvailability();
 }
@@ -82,15 +82,15 @@ fn initAvailability() void {
 
 const batch_size: SDL.Size = .{ .width = std.math.sqrt(rows), .height = std.math.sqrt(columns) };
 pub var batch_tex: [rows / batch_size.width + 1][columns / batch_size.height + 1]SDL.Texture = undefined; // textures of the numbers batched for performance
-pub fn initTextures(font: *const SDL.ttf.Font, renderer: SDL.Renderer) !void {
+pub fn initTextures(renderer: SDL.Renderer) !void {
     for (0..batch_tex.len) |row| {
         for (0..batch_tex[0].len) |column| {
-            try initBatch(.{ .y = row, .x = column }, font, renderer);
+            try initBatch(.{ .y = row, .x = column }, renderer);
         }
     }
 }
 
-fn initBatch(index: idx2D, font: *const SDL.ttf.Font, renderer: SDL.Renderer) !void {
+fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
     //make buffers for texture creation.
     var surf: SDL.Surface = undefined;
     var text_buffer: [12]u8 = undefined;
@@ -115,7 +115,7 @@ fn initBatch(index: idx2D, font: *const SDL.ttf.Font, renderer: SDL.Renderer) !v
 
             const num_str = std.fmt.bufPrintZ(&text_buffer, "{d:>5}", .{mem[idx1].val}) catch "???";
             const color: SDL.Color = if (mem[idx1].owner == Ownership.free) design.block.free.fg else design.block.taken.fg;
-            surf = font.renderTextBlended(num_str, color) catch handle: {
+            surf = design.font.renderTextBlended(num_str, color) catch handle: {
                 std.debug.print("failed to load surface for texture\npossible used bad font.\n", .{});
                 break :handle try SDL.createRgbSurfaceWithFormat(32, 32, SDL.PixelFormatEnum.rgb888);
             };
@@ -241,10 +241,24 @@ pub fn set(idx: usize, value: i64, renderer: SDL.Renderer) !void {
     //recreate texture of the batch containing the value.
     const owning_batch = batchOf(idx);
     batch_tex[owning_batch.y][owning_batch.x].destroy();
-    try initBatch(owning_batch, &design.font, renderer);
+    try initBatch(owning_batch, renderer);
 }
-pub fn alloc(size: usize) HeapError![]const i64 {
+pub fn alloc(size: usize, renderer: SDL.Renderer) HeapError![]const i64 {
     const range = try findFreeRange(size);
+    for (range.start..range.end) |idx| {
+        if (mem[idx].owner != Ownership.free)
+            return HeapError.MemoryNotAvailable;
+    }
+    var affected_batches = std.AutoHashMap(idx2D, void);
+    for (range.start..range.end) |idx| {
+        mem[idx].owner = Ownership.user;
+        affected_batches.put(batchOf(idx), {});
+    }
+    var it = affected_batches.keyIterator();
+    while (it.next()) |batch| {
+        batch_tex[batch.y][batch.x].destroy();
+        initBatch(batch, renderer);
+    }
     return mem[range.start..range.end];
 }
 

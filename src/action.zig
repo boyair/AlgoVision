@@ -5,15 +5,11 @@ const app = @import("app.zig");
 const heap = @import("heap/internal.zig");
 
 pub const Action = union(enum) {
-    change_bg: struct { color: SDL.Color }, //for now used for testing.
     set_value_heap: struct { idx: usize, value: i64 }, //set a value on the heap.
 };
 
 pub fn perform(action: Action) void {
     switch (action) {
-        .change_bg => |data| {
-            design.heap.color_BG = data.color;
-        },
         .set_value_heap => |data| {
             heap.set(data.idx, data.value, app.renderer) catch {};
         },

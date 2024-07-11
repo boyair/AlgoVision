@@ -27,7 +27,6 @@ pub const Manager = struct {
     animation_state: Animation.ZoomAnimation, // a copy of current animation to not affect the animation directly in the operation.
     time_paused: i128,
     state: OperationState,
-    state_done: bool,
 
     pub fn init() Manager {
         return .{
@@ -36,7 +35,6 @@ pub const Manager = struct {
             .animation_state = undefined,
             .time_paused = 0,
             .state = OperationState.animate,
-            .state_done = false,
         };
     }
 
@@ -62,17 +60,16 @@ pub const Manager = struct {
             switch (self.state) {
                 .animate => {
                     self.animation_state.update(delta_time);
-                    if (self.animation_state.done)
-                        self.state_done = true;
+                    if (!self.animation_state.done)
+                        return;
                 },
                 .act => {
                     Action.perform(current_operation.data.action);
-                    self.state_done = true;
                 },
                 .pause => {
                     self.time_paused += delta_time;
-                    if (self.time_paused >= current_operation.data.pause_time_nano)
-                        self.state_done = true;
+                    if (!(self.time_paused >= current_operation.data.pause_time_nano))
+                        return;
                 },
                 .done => {
                     self.current_operation = current_operation.next;
@@ -80,14 +77,10 @@ pub const Manager = struct {
                     self.animation_state = if (current_operation.next) |nxt| nxt.data.animation else Animation.ZoomAnimation.init(self.animation_state.view, current_view, current_view, 0);
                     self.animation_state.start_state = current_view;
                     self.time_paused = 0;
-                    self.state_done = true;
                 },
             }
-            //iterate states once done
-            if (self.state_done) {
-                self.state = @enumFromInt((@intFromEnum(self.state) + 1) % (@intFromEnum(OperationState.done) + 1));
-                self.state_done = false;
-            }
+            //iterate states
+            self.state = @enumFromInt((@intFromEnum(self.state) + 1) % (@intFromEnum(OperationState.done) + 1));
         }
     }
 };

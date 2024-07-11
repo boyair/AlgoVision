@@ -64,6 +64,23 @@ pub const View = struct {
         }
         return !SDLex.compareRect(original_port, self.port);
     }
+    pub fn offLimits(self: View, future_port: SDL.RectangleF) bool {
+        if (self.min_size) |min| {
+            if (future_port.width < min.x) return true;
+            if (future_port.height < min.y) return true;
+        }
+        if (self.max_size) |max| {
+            if (future_port.width > max.x) return true;
+            if (future_port.height > max.y) return true;
+        }
+        if (self.border) |border| {
+            if (future_port.x < border.x) return true;
+            if (future_port.y < border.y) return true;
+            if (future_port.x > border.x + border.width - future_port.width) return true;
+            if (future_port.y > border.y + border.height - future_port.height) return true;
+        }
+        return false;
+    }
 
     //resize and move the view-port to create a zoom effect.
     pub fn zoom(self: *View, scale: f32, point: ?SDL.Point) void {
@@ -103,6 +120,8 @@ pub const View = struct {
         }
         return result;
     }
+
+    //rendering functions
     pub fn draw(self: View, rect: SDL.RectangleF, texture: SDL.Texture, renderer: SDL.Renderer) void {
         const transformed = self.convert(rect) catch null;
 
@@ -114,6 +133,7 @@ pub const View = struct {
             renderer.copy(texture, SDLex.convertSDLRect(in_view), null) catch unreachable;
         }
     }
+
     pub fn fillRect(self: View, rect: SDL.RectangleF, renderer: SDL.Renderer) void {
         const transformed = self.convert(rect) catch null;
         if (transformed) |in_view| {
