@@ -243,16 +243,15 @@ pub fn drawBatch(idx: idx2D, renderer: SDL.Renderer, view: View) void {
 //---------------------------------------------------
 //---------------------------------------------------
 
-//pub fn get(idx: usize) HeapError!i64 {
-//    if (idx >= mem.len * mem[0].len) {
-//        return HeapError.OutOfRange;
-//    }
-//    const mem_idx = idx2D.init(idx, mem[0].len);
-//    if (availables[mem_idx.y][mem_idx.x] == false) {
-//        return HeapError.MemoryNotAvailable;
-//    }
-//    return mem[mem_idx.y][mem_idx.x];
-//}
+pub fn get(idx: usize) HeapError!i64 {
+    if (idx >= mem.len) {
+        return HeapError.OutOfRange;
+    }
+    return if (mem[idx].owner == .user or mem[idx].future_owner == .user)
+        mem[idx].val
+    else
+        HeapError.MemoryNotAllocated;
+}
 
 pub fn setBG(color: SDL.Color) void {
     Operation.push(Operation.Operation{ .change_bg = color });

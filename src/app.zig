@@ -23,6 +23,7 @@ pub var cam_view: View = undefined;
 var initiallized = false;
 var state: State = State.heap;
 var running_time: i128 = 0;
+var playback_speed: f128 = 1;
 
 pub fn init() !void {
     if (initiallized) {
@@ -63,11 +64,18 @@ pub fn start() !void {
     var last_iteration_time: i128 = 0;
     mainLoop: while (true) {
         const start_time = std.time.nanoTimestamp();
+        last_iteration_time = @intFromFloat(@as(f128, @floatFromInt(last_iteration_time)) * playback_speed);
         operation_manager.update(last_iteration_time);
         const mouse_state = SDL.getMouseState();
         const mouse_pos: SDL.Point = .{ .x = mouse_state.x, .y = mouse_state.y };
         while (SDL.pollEvent()) |ev| {
             switch (ev) {
+                .key_up => {
+                    if (ev.key_up.scancode == .down)
+                        playback_speed -= 0.2;
+                    if (ev.key_up.scancode == .up)
+                        playback_speed += 0.2;
+                },
                 .mouse_button_down => {
                     if (ev.mouse_button_down.button == SDL.MouseButton.right) {
                         holding_right = true;

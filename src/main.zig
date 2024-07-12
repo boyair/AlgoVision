@@ -11,10 +11,13 @@ const Operation = @import("operation.zig");
 
 pub fn main() !void {
     try app.init();
-    const mem = heap.allocate(5);
+    const mem = heap.allocate(12);
+    var sum: i64 = 0;
     for (mem) |idx| {
+        sum += heap.get(idx);
         heap.set(idx, @intCast(idx));
     }
+    heap.set(mem[0], sum);
     const mem27 = heap.allocate(27);
     for (mem27) |idx| {
         heap.set(idx, @intCast(idx));

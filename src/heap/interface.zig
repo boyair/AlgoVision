@@ -72,7 +72,6 @@ pub fn allocate(size: usize) []usize {
     const range = Internals.findFreeRange(size) catch {
         @panic("could not find large enough buffer");
     };
-    std.debug.print("{d} .. {d}", range);
 
     for (0..range.start) |idx| {
         const block_view = blockView(idx);
@@ -82,6 +81,7 @@ pub fn allocate(size: usize) []usize {
     }
     var indexes = std.ArrayList(usize).init(Internals.gpa.allocator());
     for (range.start..range.end) |idx| {
+        Internals.mem[idx].future_owner = .user;
         indexes.append(idx) catch unreachable;
         const range_view = rangeView(range.start, idx + 1) catch unreachable;
         const animation = ZoomAnimation.init(&app.cam_view, null, range_view, 3_000_000_000 / (range.end - range.start));
@@ -89,4 +89,25 @@ pub fn allocate(size: usize) []usize {
         app.operation_manager.push(operation);
     }
     return indexes.toOwnedSlice() catch unreachable;
+}
+
+//TODO: change this function to interact with the stack once created.
+pub fn get(idx: usize) i64 {
+    const block_view = blockView(idx);
+    const animation = ZoomAnimation.init(&app.cam_view, null, block_view, 1_000_000_000);
+
+    const operation: Operation.Operation = .{ .animation = animation, .action = .{ .none = {} }, .pause_time_nano = 900_000_000 };
+
+    app.operation_manager.push(operation);
+    return Internals.get(idx) catch |err| switch (err) {
+        error.MemoryNotAllocated => {
+            @panic("trying to get non allocated memory");
+        },
+        error.OutOfRange => {
+            @panic("getting out of range index");
+        },
+        else => {
+            @panic("failed to get value");
+        },
+    };
 }
