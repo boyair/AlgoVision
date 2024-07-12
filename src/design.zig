@@ -12,16 +12,16 @@ pub const heap = struct {
 
         pub const free = struct {
             pub const fg: SDL.Color = SDL.Color.green;
-            pub const bg: SDL.Color = SDL.Color.cyan;
+            pub const bg: SDL.Color = SDL.Color.white;
         };
 
         pub const taken = struct {
             pub const fg: SDL.Color = SDL.Color.red;
-            pub const bg: SDL.Color = SDL.Color.white;
+            pub const bg: SDL.Color = SDL.Color.black;
         };
         pub const user = struct {
             pub const fg: SDL.Color = SDL.Color.red;
-            pub const bg: SDL.Color = SDL.Color.white;
+            pub const bg: SDL.Color = SDL.Color.blue;
         };
     };
     pub const position: SDL.Point = .{ .x = 0, .y = 0 };

@@ -5,7 +5,7 @@ const Operation = @import("../operation.zig");
 const SDLex = @import("../SDLex.zig");
 const design = @import("../design.zig").heap;
 const ZoomAnimation = @import("../animation.zig").ZoomAnimation;
-const gpa = std.heap.GeneralPurposeAllocator(.{}){};
+pub var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 pub const rows = 50;
 pub const columns = 50;
 const Ownership = enum(u8) {
@@ -17,6 +17,7 @@ const Ownership = enum(u8) {
 const block = struct {
     val: i64,
     owner: Ownership,
+    future_owner: Ownership,
 };
 
 //struct to simplify 2d indexing
@@ -40,7 +41,6 @@ const HeapError = error{
 };
 
 pub var mem: [rows * columns]block = undefined;
-pub var availables: [mem.len]bool = undefined;
 
 //initiallize heap with random values in range 0 - 999;
 pub fn initRand() void {
@@ -65,8 +65,9 @@ pub fn initIndex() void {
 fn initAvailability() void {
     const time: usize = @intCast(std.time.timestamp());
     var cur_val_set = false;
-    for (0..availables.len) |idx| {
-        mem[idx].owner = if (cur_val_set) Ownership.taken else Ownership.free;
+    for (&mem, 0..) |*blk, idx| {
+        blk.owner = if (cur_val_set) Ownership.taken else Ownership.free;
+        blk.future_owner = blk.owner;
 
         //flip value on random occasion
         if (@rem(randomNum(@intCast(time + idx)), columns) == 1)
@@ -82,21 +83,23 @@ fn initAvailability() void {
 
 const batch_size: SDL.Size = .{ .width = std.math.sqrt(rows), .height = std.math.sqrt(columns) };
 pub var batch_tex: [rows / batch_size.width + 1][columns / batch_size.height + 1]SDL.Texture = undefined; // textures of the numbers batched for performance
+var batches_to_update: std.AutoHashMap(idx2D, void) = undefined;
 pub fn initTextures(renderer: SDL.Renderer) !void {
     for (0..batch_tex.len) |row| {
         for (0..batch_tex[0].len) |column| {
             try initBatch(.{ .y = row, .x = column }, renderer);
         }
     }
+    batches_to_update = std.AutoHashMap(idx2D, void).init(gpa.allocator());
 }
 
 fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
     //make buffers for texture creation.
     var surf: SDL.Surface = undefined;
     var text_buffer: [12]u8 = undefined;
+
     //initiallize texture to draw on
     const last_target = renderer.getTarget();
-
     batch_tex[index.y][index.x] =
         try SDL.createTexture(renderer, SDL.Texture.Format.rgba8888, .target, design.block.full_size.width * batch_size.width, design.block.full_size.height * batch_size.height);
     try batch_tex[index.y][index.x].setBlendMode(SDL.BlendMode.blend);
@@ -104,7 +107,9 @@ fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
 
     //memory section to use based on batch_index
     const mem_start: idx2D = .{ .x = @intCast(batch_size.width * index.x), .y = @intCast(batch_size.height * index.y) };
+
     const original_renderer_color = try SDL.Renderer.getColor(renderer);
+
     for (mem_start.y..mem_start.y + batch_size.height) |row| {
         for (mem_start.x..mem_start.x + batch_size.width) |column| {
             const idx2 = idx2D{ .x = column, .y = row };
@@ -114,10 +119,21 @@ fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
                 continue;
 
             const num_str = std.fmt.bufPrintZ(&text_buffer, "{d:>5}", .{mem[idx1].val}) catch "???";
-            const color: SDL.Color = if (mem[idx1].owner == Ownership.free) design.block.free.fg else design.block.taken.fg;
-            surf = design.font.renderTextBlended(num_str, color) catch handle: {
+            // color tuning
+            const color_fg: SDL.Color = switch (mem[idx1].owner) {
+                .free => design.block.free.fg,
+                .taken => design.block.taken.fg,
+                .user => design.block.user.fg,
+            };
+            const color_bg: SDL.Color = switch (mem[idx1].owner) {
+                .free => design.block.free.bg,
+                .taken => design.block.taken.bg,
+                .user => design.block.user.bg,
+            };
+
+            surf = design.font.renderTextBlended(num_str, color_fg) catch handle: {
                 std.debug.print("failed to load surface for texture\npossible used bad font.\n", .{});
-                break :handle try SDL.createRgbSurfaceWithFormat(32, 32, SDL.PixelFormatEnum.rgb888);
+                break :handle try SDL.createRgbSurfaceWithFormat(32, 32, SDL.PixelFormatEnum.rgba8888);
             };
             const texture = try SDL.createTextureFromSurface(renderer, surf);
             var block_rect = SDLex.convertSDLRect(blockRect(idx1));
@@ -125,7 +141,7 @@ fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
             block_rect.y -= @intCast(index.y * batch_size.height * design.block.full_size.height + 1);
 
             //std.debug.print("block rect: {d},{d},{d},{d}\n", block_rect);
-            try renderer.setColor(if (mem[idx1].owner == Ownership.free) design.block.free.bg else design.block.taken.bg);
+            try renderer.setColor(color_bg);
             try renderer.fillRect(block_rect);
             block_rect.x += design.block.padding.width / 2;
             block_rect.y += design.block.padding.height / 2;
@@ -185,19 +201,25 @@ pub fn destroyTextures() void {
             column.destroy();
         }
     }
+    batches_to_update.deinit();
 }
 
 pub fn draw(renderer: SDL.Renderer, view: View) void {
+    //updates the batches that has changed
+    if (batches_to_update.count() > 0) {
+        var it = batches_to_update.keyIterator();
+        while (it.next()) |batch| {
+            batch_tex[batch.y][batch.x].destroy();
+            initBatch(batch.*, renderer) catch unreachable;
+        }
+        batches_to_update.clearRetainingCapacity();
+    }
+    //drawing
     for (0..batch_tex.len) |row| {
         for (0..batch_tex[0].len) |column| {
             drawBatch(.{ .y = row, .x = column }, renderer, view);
         }
     }
-
-    const save_color = renderer.getColor() catch unreachable;
-    renderer.setColor(design.block.grid_color) catch unreachable;
-
-    renderer.setColor(save_color) catch unreachable;
 }
 
 pub fn drawBatch(idx: idx2D, renderer: SDL.Renderer, view: View) void {
@@ -207,6 +229,8 @@ pub fn drawBatch(idx: idx2D, renderer: SDL.Renderer, view: View) void {
         .width = @floatFromInt((design.block.full_size.width) * batch_size.width),
         .height = @floatFromInt((design.block.full_size.height) * batch_size.height),
     };
+    std.debug.print("\n{d:.2}, {d}, {d}, {d}\n", view.port);
+    std.debug.print("\n{d:.2}, {d}, {d}, {d}\n", view.convert(batch_rect) catch return);
     var converted_rect = SDLex.convertSDLRect(view.convert(batch_rect) catch return);
     converted_rect.width += 1;
     converted_rect.height += 1;
@@ -219,16 +243,16 @@ pub fn drawBatch(idx: idx2D, renderer: SDL.Renderer, view: View) void {
 //---------------------------------------------------
 //---------------------------------------------------
 
-pub fn get(idx: usize) HeapError!i64 {
-    if (idx >= mem.len * mem[0].len) {
-        return HeapError.OutOfRange;
-    }
-    const mem_idx = idx2D.init(idx, mem[0].len);
-    if (availables[mem_idx.y][mem_idx.x] == false) {
-        return HeapError.MemoryNotAvailable;
-    }
-    return mem[mem_idx.y][mem_idx.x];
-}
+//pub fn get(idx: usize) HeapError!i64 {
+//    if (idx >= mem.len * mem[0].len) {
+//        return HeapError.OutOfRange;
+//    }
+//    const mem_idx = idx2D.init(idx, mem[0].len);
+//    if (availables[mem_idx.y][mem_idx.x] == false) {
+//        return HeapError.MemoryNotAvailable;
+//    }
+//    return mem[mem_idx.y][mem_idx.x];
+//}
 
 pub fn setBG(color: SDL.Color) void {
     Operation.push(Operation.Operation{ .change_bg = color });
@@ -237,29 +261,23 @@ pub fn setBG(color: SDL.Color) void {
 pub fn set(idx: usize, value: i64, renderer: SDL.Renderer) !void {
     if (idx >= mem.len)
         return HeapError.OutOfRange;
-    mem[idx].val = value;
+    if (mem[idx].owner == Ownership.user) {
+        mem[idx].val = value;
+    } else {
+        return HeapError.MemoryNotAllocated;
+    }
+
     //recreate texture of the batch containing the value.
     const owning_batch = batchOf(idx);
-    batch_tex[owning_batch.y][owning_batch.x].destroy();
+    try batches_to_update.put(owning_batch, {});
     try initBatch(owning_batch, renderer);
 }
-pub fn alloc(size: usize, renderer: SDL.Renderer) HeapError![]const i64 {
-    const range = try findFreeRange(size);
-    for (range.start..range.end) |idx| {
-        if (mem[idx].owner != Ownership.free)
-            return HeapError.MemoryNotAvailable;
+pub fn allocate(idx: usize) HeapError!void {
+    if (mem[idx].owner != Ownership.free) {
+        return HeapError.MemoryNotAvailable;
     }
-    var affected_batches = std.AutoHashMap(idx2D, void);
-    for (range.start..range.end) |idx| {
-        mem[idx].owner = Ownership.user;
-        affected_batches.put(batchOf(idx), {});
-    }
-    var it = affected_batches.keyIterator();
-    while (it.next()) |batch| {
-        batch_tex[batch.y][batch.x].destroy();
-        initBatch(batch, renderer);
-    }
-    return mem[range.start..range.end];
+    mem[idx].owner = Ownership.user;
+    batches_to_update.put(batchOf(idx), {}) catch unreachable;
 }
 
 //---------------------------------------------------
@@ -271,6 +289,34 @@ fn randomNum(seed: i64) i64 {
     const state: i64 = seed * 747796405 + 2891336453;
     const word: i64 = ((state >> @as(u6, @truncate(@as(u64, @intCast(state)) >> 28)) +% 4) ^ state) *% 277803737;
     return (word >> 22) ^ word;
+}
+
+pub fn findFreeRange(size: usize) HeapError!struct { start: usize, end: usize } {
+    var start_idx: usize = 0;
+    var end_idx: usize = 0;
+    var found: bool = false;
+
+    main: for (0..mem.len - size) |Sidx| {
+        if (mem[Sidx].owner != .free or mem[Sidx].future_owner != .free) continue;
+
+        for (Sidx..mem.len) |Eidx| {
+            //std.debug.print("{d}\n", .{Sidx});
+            if (mem[Eidx].owner != .free or mem[Eidx].future_owner != .free)
+                break;
+
+            const true_end = Eidx + 1; // range is not inclusive
+            if (size <= true_end - Sidx) {
+                found = true;
+                start_idx = Sidx;
+                end_idx = true_end;
+                break :main;
+            }
+        }
+    }
+
+    if (!found)
+        return HeapError.MemoryNotAvailable;
+    return .{ .start = start_idx, .end = end_idx };
 }
 
 //---------------------------------------------------
@@ -295,30 +341,31 @@ pub fn blockRect(block_idx: usize) SDL.RectangleF {
     return SDLex.convertSDLRect(rect);
 }
 
-fn findFreeRange(size: usize) HeapError!struct { start: usize, end: usize } {
-    var start_idx: usize = 0;
-    var end_idx: usize = 0;
-    var found: bool = false;
-    //var follow_animation = ZoomAnimation.init(cam_view.port, .{ .x = -500, .y = -500,.width = 1000,.height = 1000 }, 500_000_000);
+//---------------------------------------------------
+//---------------------------------------------------
+//---------------------TESTING-----------------------
+//---------------------------------------------------
+//---------------------------------------------------
 
-    main: for (0..(rows * columns)) |Sidx| {
-        if (!availables[Sidx]) continue;
+test "idx2d" {
+    const idx = 69;
+    const cols = 50;
+    const idx2d = idx2D.init(idx, cols);
+    try std.testing.expect(idx2d.x == 19 and idx2d.y == 1);
+    try std.testing.expect(idx2d.to1D(cols) == idx);
+}
 
-        for (Sidx..(rows * columns)) |Eidx| {
-            if (!availables[Eidx])
-                break;
-
-            const true_end = Eidx + 1; // range is not inclusive
-            if (size <= true_end - Sidx) {
-                found = true;
-                start_idx = Sidx;
-                end_idx = true_end;
-                break :main;
-            }
-        }
+test "freerange" {
+    const range_67 = findFreeRange(67);
+    if (range_67) |rng| {
+        try std.testing.expect(rng.end - rng.start == 67);
+    } else |_| {
+        std.debug.print("could not find range.", .{});
     }
-
-    if (!found)
-        return HeapError.MemoryNotAvailable;
-    return .{ .start = start_idx, .end = end_idx };
+    const range_13 = findFreeRange(13);
+    if (range_13) |rng| {
+        try std.testing.expect(rng.end - rng.start == 13);
+    } else |_| {
+        std.debug.print("could not find range.", .{});
+    }
 }

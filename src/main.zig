@@ -11,8 +11,13 @@ const Operation = @import("operation.zig");
 
 pub fn main() !void {
     try app.init();
-    heap.set(9, 645319);
-    heap.set(62, 69);
-    heap.set(99, 69);
+    const mem = heap.allocate(5);
+    for (mem) |idx| {
+        heap.set(idx, @intCast(idx));
+    }
+    const mem27 = heap.allocate(27);
+    for (mem27) |idx| {
+        heap.set(idx, @intCast(idx));
+    }
     try app.start();
 }
