@@ -17,7 +17,6 @@ const Ownership = enum(u8) {
 const block = struct {
     val: i64,
     owner: Ownership,
-    future_owner: Ownership,
 };
 
 //struct to simplify 2d indexing
@@ -41,6 +40,8 @@ const HeapError = error{
 };
 
 pub var mem: [rows * columns]block = undefined;
+// a copy that is nodified on fuction calls from the user instead of by operation
+pub var mem_runtime: [rows * columns]block = undefined;
 
 //initiallize heap with random values in range 0 - 999;
 pub fn initRand() void {
@@ -52,6 +53,7 @@ pub fn initRand() void {
         blk.val = @intCast(random_neg + random_pos);
     }
     initAvailability();
+    @memcpy(mem_runtime[0..], mem[0..]);
 }
 
 //initiallize heap such that each block gets its ondex value;
@@ -67,7 +69,6 @@ fn initAvailability() void {
     var cur_val_set = false;
     for (&mem, 0..) |*blk, idx| {
         blk.owner = if (cur_val_set) Ownership.taken else Ownership.free;
-        blk.future_owner = blk.owner;
 
         //flip value on random occasion
         if (@rem(randomNum(@intCast(time + idx)), columns) == 1)
@@ -140,7 +141,6 @@ fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
             block_rect.x -= @intCast(index.x * batch_size.width * design.block.full_size.width + 1);
             block_rect.y -= @intCast(index.y * batch_size.height * design.block.full_size.height + 1);
 
-            //std.debug.print("block rect: {d},{d},{d},{d}\n", block_rect);
             try renderer.setColor(color_bg);
             try renderer.fillRect(block_rect);
             block_rect.x += design.block.padding.width / 2;
@@ -229,8 +229,6 @@ pub fn drawBatch(idx: idx2D, renderer: SDL.Renderer, view: View) void {
         .width = @floatFromInt((design.block.full_size.width) * batch_size.width),
         .height = @floatFromInt((design.block.full_size.height) * batch_size.height),
     };
-    std.debug.print("\n{d:.2}, {d}, {d}, {d}\n", view.port);
-    std.debug.print("\n{d:.2}, {d}, {d}, {d}\n", view.convert(batch_rect) catch return);
     var converted_rect = SDLex.convertSDLRect(view.convert(batch_rect) catch return);
     converted_rect.width += 1;
     converted_rect.height += 1;
@@ -247,8 +245,8 @@ pub fn get(idx: usize) HeapError!i64 {
     if (idx >= mem.len) {
         return HeapError.OutOfRange;
     }
-    return if (mem[idx].owner == .user or mem[idx].future_owner == .user)
-        mem[idx].val
+    return if (mem_runtime[idx].owner == .user)
+        mem_runtime[idx].val
     else
         HeapError.MemoryNotAllocated;
 }
@@ -296,11 +294,10 @@ pub fn findFreeRange(size: usize) HeapError!struct { start: usize, end: usize } 
     var found: bool = false;
 
     main: for (0..mem.len - size) |Sidx| {
-        if (mem[Sidx].owner != .free or mem[Sidx].future_owner != .free) continue;
+        if (mem[Sidx].owner != .free) continue;
 
         for (Sidx..mem.len) |Eidx| {
-            //std.debug.print("{d}\n", .{Sidx});
-            if (mem[Eidx].owner != .free or mem[Eidx].future_owner != .free)
+            if (mem_runtime[Eidx].owner != .free)
                 break;
 
             const true_end = Eidx + 1; // range is not inclusive

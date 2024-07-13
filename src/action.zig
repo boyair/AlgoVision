@@ -7,6 +7,7 @@ const heap = @import("heap/internal.zig");
 pub const Action = union(enum) {
     set_value_heap: struct { idx: usize, value: i64 }, //set a value on the heap.
     allocate: usize,
+    print: []const u8,
     none: void,
 };
 
@@ -19,6 +20,9 @@ pub fn perform(action: Action) void {
             heap.allocate(idx) catch {
                 @panic("tried to allocate non free memory!!");
             };
+        },
+        .print => |str| {
+            std.debug.print("{s}", .{str});
         },
         .none => {},
     }

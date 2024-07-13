@@ -6,7 +6,6 @@ const app = @import("app.zig");
 const Animation = @import("animation.zig");
 const View = @import("view.zig").View;
 pub var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-pub var OP_alloc = std.heap.ArenaAllocator.init(gpa.allocator());
 
 const OperationState = enum(u8) {
     animate,
@@ -39,7 +38,7 @@ pub const Manager = struct {
     }
 
     pub fn push(self: *Manager, operation: Operation) void {
-        const node = OP_alloc.allocator().create(std.DoublyLinkedList(Operation).Node) catch {
+        const node = app.Allocator.allocator().create(std.DoublyLinkedList(Operation).Node) catch {
             @panic("could not allocate memory for operation.");
         };
 

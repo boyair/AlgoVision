@@ -6,7 +6,9 @@ const View = @import("view.zig").View;
 const heap = @import("heap/internal.zig");
 const design = @import("design.zig");
 const Operation = @import("operation.zig");
+const Animation = @import("animation.zig");
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+pub var Allocator = std.heap.ArenaAllocator.init(gpa.allocator());
 
 const fps = 2000;
 const frame_time_nano = 1_000_000_000 / fps;
@@ -114,6 +116,7 @@ pub fn start() !void {
     }
 }
 
-//pub fn heapAlloc(usize: size){
-//    heap.alloc(4,)
-//}
+pub fn print(comptime str: []const u8, args: anytype) void {
+    const string = std.fmt.allocPrint(Allocator.allocator(), str, args) catch unreachable;
+    operation_manager.push(.{ .action = .{ .print = string }, .animation = Animation.ZoomAnimation.init(&cam_view, null, .{ .x = 0, .y = 0, .width = 0, .height = 0 }, 0), .pause_time_nano = 0 });
+}

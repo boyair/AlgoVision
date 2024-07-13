@@ -17,6 +17,8 @@ pub fn main() !void {
         sum += heap.get(idx);
         heap.set(idx, @intCast(idx));
     }
+    app.print("number:  {d}\n", .{heap.get(mem[0])});
+
     heap.set(mem[0], sum);
     const mem27 = heap.allocate(27);
     for (mem27) |idx| {

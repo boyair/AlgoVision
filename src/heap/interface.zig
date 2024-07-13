@@ -43,16 +43,6 @@ fn rangeView(start: usize, end: usize) !SDL.RectangleF {
     range_view.x = avarage_loc.x - range_view.width / 2;
     range_view.y = avarage_loc.y - range_view.width / 2;
 
-    //range view should:
-    //include all blocks V
-    //width = height V
-    //avarage of blocks should be in the center X
-
-    //keep square view
-    // range_view.x = avarage_loc.x - range_view.width / 2;
-    // range_view.y = avarage_loc.y - range_view.height / 2;
-    std.debug.print("x: {d}\n", .{range_view.x});
-
     range_view.x -= design.block.full_size.width * 4;
     range_view.y -= design.block.full_size.height * 4;
     range_view.width += design.block.full_size.width * 8;
@@ -65,6 +55,7 @@ pub fn set(idx: usize, value: i64) void {
     const animation = ZoomAnimation.init(&app.cam_view, null, block_view, 1_000_000_000);
 
     const operation: Operation.Operation = .{ .animation = animation, .action = .{ .set_value_heap = .{ .idx = idx, .value = value } }, .pause_time_nano = 900_000_000 };
+    Internals.mem_runtime[idx].val = value;
 
     app.operation_manager.push(operation);
 }
@@ -81,7 +72,7 @@ pub fn allocate(size: usize) []usize {
     }
     var indexes = std.ArrayList(usize).init(Internals.gpa.allocator());
     for (range.start..range.end) |idx| {
-        Internals.mem[idx].future_owner = .user;
+        Internals.mem_runtime[idx].owner = .user;
         indexes.append(idx) catch unreachable;
         const range_view = rangeView(range.start, idx + 1) catch unreachable;
         const animation = ZoomAnimation.init(&app.cam_view, null, range_view, 3_000_000_000 / (range.end - range.start));
@@ -91,7 +82,6 @@ pub fn allocate(size: usize) []usize {
     return indexes.toOwnedSlice() catch unreachable;
 }
 
-//TODO: change this function to interact with the stack once created.
 pub fn get(idx: usize) i64 {
     const block_view = blockView(idx);
     const animation = ZoomAnimation.init(&app.cam_view, null, block_view, 1_000_000_000);
