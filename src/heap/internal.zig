@@ -293,10 +293,10 @@ pub fn findFreeRange(size: usize) HeapError!struct { start: usize, end: usize } 
     var end_idx: usize = 0;
     var found: bool = false;
 
-    main: for (0..mem.len - size) |Sidx| {
-        if (mem[Sidx].owner != .free) continue;
+    main: for (0..mem_runtime.len - size) |Sidx| {
+        if (mem_runtime[Sidx].owner != .free) continue;
 
-        for (Sidx..mem.len) |Eidx| {
+        for (Sidx..mem_runtime.len) |Eidx| {
             if (mem_runtime[Eidx].owner != .free)
                 break;
 

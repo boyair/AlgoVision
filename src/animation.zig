@@ -39,15 +39,3 @@ pub const ZoomAnimation = struct {
         };
     }
 };
-
-pub const Animation = struct {
-    zoom_animation: ZoomAnimation,
-    action: Action.Action,
-    pub fn run(self: Animation, time_delta: i128, data: *anyopaque) void {
-        if (self.zoom_animation.done) {
-            self.action.do(data);
-        } else {
-            self.zoom_animation.update(time_delta);
-        }
-    }
-};

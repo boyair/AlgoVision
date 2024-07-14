@@ -20,6 +20,7 @@ pub const View = struct {
         return .{
             .port = .{ .x = 0, .y = 0, .width = @floatFromInt(window_size.width), .height = @floatFromInt(window_size.height) },
             .window_size = window.getSize(),
+
         };
     }
 

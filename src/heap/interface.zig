@@ -52,9 +52,9 @@ fn rangeView(start: usize, end: usize) !SDL.RectangleF {
 
 pub fn set(idx: usize, value: i64) void {
     const block_view = blockView(idx);
-    const animation = ZoomAnimation.init(&app.cam_view, null, block_view, 1_000_000_000);
+    const animation = ZoomAnimation.init(&app.cam_view, null, block_view, 200_000_000);
 
-    const operation: Operation.Operation = .{ .animation = animation, .action = .{ .set_value_heap = .{ .idx = idx, .value = value } }, .pause_time_nano = 900_000_000 };
+    const operation: Operation.Operation = .{ .animation = animation, .action = .{ .set_value_heap = .{ .idx = idx, .value = value } }, .pause_time_nano = 200_000_000 };
     Internals.mem_runtime[idx].val = value;
 
     app.operation_manager.push(operation);
@@ -66,8 +66,8 @@ pub fn allocate(size: usize) []usize {
 
     for (0..range.start) |idx| {
         const block_view = blockView(idx);
-        const animation = ZoomAnimation.init(&app.cam_view, null, block_view, 2_000_000_000 / range.start);
-        const operation: Operation.Operation = .{ .animation = animation, .action = .{ .none = {} }, .pause_time_nano = 400_000_000 / range.start };
+        const animation = ZoomAnimation.init(&app.cam_view, null, block_view, 200_000_000);
+        const operation: Operation.Operation = .{ .animation = animation, .action = .{ .none = {} }, .pause_time_nano = 200_000_000 };
         app.operation_manager.push(operation);
     }
     var indexes = std.ArrayList(usize).init(Internals.gpa.allocator());
@@ -75,20 +75,20 @@ pub fn allocate(size: usize) []usize {
         Internals.mem_runtime[idx].owner = .user;
         indexes.append(idx) catch unreachable;
         const range_view = rangeView(range.start, idx + 1) catch unreachable;
-        const animation = ZoomAnimation.init(&app.cam_view, null, range_view, 3_000_000_000 / (range.end - range.start));
-        const operation: Operation.Operation = .{ .animation = animation, .action = .{ .allocate = idx }, .pause_time_nano = 400_000_000 / (range.end - range.start) };
+        const animation = ZoomAnimation.init(&app.cam_view, null, range_view, 200_000_000);
+        const operation: Operation.Operation = .{ .animation = animation, .action = .{ .allocate = idx }, .pause_time_nano = 200_000_000 };
         app.operation_manager.push(operation);
     }
     return indexes.toOwnedSlice() catch unreachable;
 }
 
 pub fn get(idx: usize) i64 {
-    const block_view = blockView(idx);
-    const animation = ZoomAnimation.init(&app.cam_view, null, block_view, 1_000_000_000);
+    //const block_view = blockView(idx);
+    //const animation = ZoomAnimation.init(&app.cam_view, null, block_view, 1_000_000_000);
 
-    const operation: Operation.Operation = .{ .animation = animation, .action = .{ .none = {} }, .pause_time_nano = 900_000_000 };
+    // const operation: Operation.Operation = .{ .animation = animation, .action = .{ .none = {} }, .pause_time_nano = 900_000_000 };
 
-    app.operation_manager.push(operation);
+    // app.operation_manager.push(operation);
     return Internals.get(idx) catch |err| switch (err) {
         error.MemoryNotAllocated => {
             @panic("trying to get non allocated memory");

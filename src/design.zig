@@ -1,5 +1,5 @@
 const SDL = @import("sdl2");
-pub var BG_color: SDL.Color = SDL.Color.red;
+pub var BG_color: SDL.Color = SDL.Color.rgb(90, 90, 90);
 
 pub const heap = struct {
     pub var font: SDL.ttf.Font = undefined;
@@ -25,4 +25,13 @@ pub const heap = struct {
         };
     };
     pub const position: SDL.Point = .{ .x = 0, .y = 0 };
+};
+
+pub const UI = struct {
+    pub var font: SDL.ttf.Font = undefined;
+    pub const speed = struct {
+        pub const rect: SDL.Rectangle = .{ .x = 0, .y = 0, .width = 130, .height = 100 };
+        pub const fg: SDL.Color = SDL.Color.white;
+        pub const bg: SDL.Color = SDL.Color.rgba(0, 0, 0, 0);
+    };
 };

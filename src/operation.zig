@@ -58,9 +58,10 @@ pub const Manager = struct {
         if (self.current_operation) |current_operation| {
             switch (self.state) {
                 .animate => {
-                    self.animation_state.update(delta_time);
-                    if (!self.animation_state.done)
+                    if (!self.animation_state.done) {
+                        self.animation_state.update(delta_time);
                         return;
+                    }
                 },
                 .act => {
                     Action.perform(current_operation.data.action);

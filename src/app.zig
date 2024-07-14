@@ -7,6 +7,7 @@ const heap = @import("heap/internal.zig");
 const design = @import("design.zig");
 const Operation = @import("operation.zig");
 const Animation = @import("animation.zig");
+const UI = @import("UI.zig");
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 pub var Allocator = std.heap.ArenaAllocator.init(gpa.allocator());
 
@@ -44,10 +45,15 @@ pub fn init() !void {
     cam_view = View.init(&window);
     operation_manager = Operation.Manager.init();
 
-    //init font
+    //init fonts
     const app_dir = try std.fs.selfExeDirPathAlloc(gpa.allocator());
-    const font_path = try std.fmt.allocPrintZ(gpa.allocator(), "{s}/ioveska.ttf", .{app_dir});
-    design.heap.font = try SDL.ttf.openFont(font_path, 200);
+    defer gpa.allocator().free(app_dir);
+
+    const heap_font_path = try std.fmt.allocPrintZ(gpa.allocator(), "{s}/ioveska.ttf", .{app_dir});
+    design.heap.font = try SDL.ttf.openFont(heap_font_path, 200);
+
+    const UI_font_path = try std.fmt.allocPrintZ(gpa.allocator(), "{s}/ioveska.ttf", .{app_dir});
+    design.UI.font = try SDL.ttf.openFont(UI_font_path, 200);
 
     //loading screen
     const loading_surf = try design.heap.font.renderTextSolid("Loading...", SDL.Color.rgb(255, 255, 255));
@@ -72,12 +78,6 @@ pub fn start() !void {
         const mouse_pos: SDL.Point = .{ .x = mouse_state.x, .y = mouse_state.y };
         while (SDL.pollEvent()) |ev| {
             switch (ev) {
-                .key_up => {
-                    if (ev.key_up.scancode == .down)
-                        playback_speed -= 0.2;
-                    if (ev.key_up.scancode == .up)
-                        playback_speed += 0.2;
-                },
                 .mouse_button_down => {
                     if (ev.mouse_button_down.button == SDL.MouseButton.right) {
                         holding_right = true;
@@ -94,9 +94,11 @@ pub fn start() !void {
                     }
                 },
                 .mouse_wheel => {
-                    const delta: f32 = @floatFromInt(ev.mouse_wheel.delta_y);
-                    const zoomed_port = cam_view.getZoomed(1.0 + delta / 8.0, mouse_pos);
-                    cam_view.port = if (!cam_view.offLimits(zoomed_port)) zoomed_port else cam_view.port;
+                    if (!UI.scrollForSpeed(&playback_speed, ev.mouse_wheel.delta_y, mouse_pos)) {
+                        const delta: f32 = @floatFromInt(ev.mouse_wheel.delta_y);
+                        const zoomed_port = cam_view.getZoomed(1.0 + delta / 8.0, mouse_pos);
+                        cam_view.port = if (!cam_view.offLimits(zoomed_port)) zoomed_port else cam_view.port;
+                    }
                 },
                 .quit => break :mainLoop,
                 else => {},
@@ -104,6 +106,7 @@ pub fn start() !void {
         }
         try renderer.clear();
         heap.draw(renderer, cam_view);
+        try UI.showSpeed(renderer, playback_speed);
         renderer.present();
 
         const sleep_time: i128 = frame_time_nano - (std.time.nanoTimestamp() - start_time);
@@ -116,7 +119,9 @@ pub fn start() !void {
     }
 }
 
-pub fn print(comptime str: []const u8, args: anytype) void {
+pub fn log(comptime str: []const u8, args: anytype) void {
     const string = std.fmt.allocPrint(Allocator.allocator(), str, args) catch unreachable;
-    operation_manager.push(.{ .action = .{ .print = string }, .animation = Animation.ZoomAnimation.init(&cam_view, null, .{ .x = 0, .y = 0, .width = 0, .height = 0 }, 0), .pause_time_nano = 0 });
+    var non_animation: Animation.ZoomAnimation = Animation.ZoomAnimation.init(&cam_view, null, .{ .x = 0, .y = 0, .width = 0, .height = 0 }, 0);
+    non_animation.done = true;
+    operation_manager.push(.{ .action = .{ .print = string }, .animation = non_animation, .pause_time_nano = 0 });
 }
