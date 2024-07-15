@@ -9,7 +9,7 @@ pub fn build(b: *std.Build) void {
     // means any target is allowed, and the default is native. Other options
     // for restricting supported target set are available.
     const target = b.standardTargetOptions(.{});
-    const sdk = Sdk.init(b, null);
+    const sdk = Sdk.init(b, null, null);
 
     // Standard optimization options allow the person running `zig build` to select
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall. Here we do not
@@ -35,7 +35,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    sdk.link(exe, .static); // link SDL2 as a static library
+    sdk.link(exe, .static, .SDL2); // link SDL2 as a static library
 
     // Add "sdl2" package that exposes the SDL2 api (like SDL_Init or SDL_CreateWindow)
     exe.root_module.addImport("sdl2", sdk.getWrapperModule());
