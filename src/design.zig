@@ -34,4 +34,9 @@ pub const UI = struct {
         pub const fg: SDL.Color = SDL.Color.white;
         pub const bg: SDL.Color = SDL.Color.rgba(0, 0, 0, 0);
     };
+    pub const action = struct {
+        pub const rect: SDL.Rectangle = .{ .x = 400, .y = 0, .width = 200, .height = 100 };
+        pub const fg: SDL.Color = SDL.Color.rgb(200, 200, 0);
+        pub const bg: SDL.Color = SDL.Color.rgba(0, 0, 0, 0);
+    };
 };

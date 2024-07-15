@@ -59,6 +59,27 @@ pub fn set(idx: usize, value: i64) void {
 
     app.operation_manager.push(operation);
 }
+
+pub fn get(idx: usize) i64 {
+    //const block_view = blockView(idx);
+    //const animation = ZoomAnimation.init(&app.cam_view, null, block_view, 1_000_000_000);
+
+    // const operation: Operation.Operation = .{ .animation = animation, .action = .{ .none = {} }, .pause_time_nano = 900_000_000 };
+
+    // app.operation_manager.push(operation);
+    return Internals.get(idx) catch |err| switch (err) {
+        error.MemoryNotAllocated => {
+            @panic("trying to get non allocated memory");
+        },
+        error.OutOfRange => {
+            @panic("getting out of range index");
+        },
+        else => {
+            @panic("failed to get value");
+        },
+    };
+}
+
 pub fn allocate(size: usize) []usize {
     const range = Internals.findFreeRange(size) catch {
         @panic("could not find large enough buffer");
@@ -82,22 +103,14 @@ pub fn allocate(size: usize) []usize {
     return indexes.toOwnedSlice() catch unreachable;
 }
 
-pub fn get(idx: usize) i64 {
-    //const block_view = blockView(idx);
-    //const animation = ZoomAnimation.init(&app.cam_view, null, block_view, 1_000_000_000);
-
-    // const operation: Operation.Operation = .{ .animation = animation, .action = .{ .none = {} }, .pause_time_nano = 900_000_000 };
-
-    // app.operation_manager.push(operation);
-    return Internals.get(idx) catch |err| switch (err) {
-        error.MemoryNotAllocated => {
-            @panic("trying to get non allocated memory");
-        },
-        error.OutOfRange => {
-            @panic("getting out of range index");
-        },
-        else => {
-            @panic("failed to get value");
-        },
-    };
+pub fn free(indices: []usize) void {
+    for (indices) |idx| {
+        if (Internals.mem_runtime[idx].owner == .user) {
+            Internals.mem_runtime[idx].owner = .free;
+            const animation = ZoomAnimation.init(&app.cam_view, null, blockView(idx), 200_000_000);
+            const operation: Operation.Operation = .{ .animation = animation, .action = .{ .free = idx }, .pause_time_nano = 200_000_000 };
+            app.operation_manager.push(operation);
+        } else @panic("failed to free memory: not allocated");
+    }
+    Internals.gpa.allocator().free(indices);
 }

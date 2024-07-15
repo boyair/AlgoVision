@@ -6,7 +6,7 @@ const SDLex = @import("SDLex.zig");
 const ZoomAnimation = @import("animation.zig").ZoomAnimation;
 const design = @import("design.zig");
 const app = @import("app.zig");
-const heap = @import("heap/interface.zig");
+const heap = app.heap;
 const Operation = @import("operation.zig");
 
 pub fn main() !void {
@@ -18,8 +18,8 @@ pub fn main() !void {
         heap.set(idx, @intCast(idx));
     }
     app.log("number:  {d}\n", .{heap.get(mem[0])});
-
     heap.set(mem[0], sum);
+    app.heap.free(mem);
     const mem27 = heap.allocate(27);
     for (mem27) |idx| {
         heap.set(idx, @intCast(idx));

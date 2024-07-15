@@ -276,6 +276,14 @@ pub fn allocate(idx: usize) HeapError!void {
     mem[idx].owner = Ownership.user;
     batches_to_update.put(batchOf(idx), {}) catch unreachable;
 }
+//TODO make freeing set a garbage value to prevent reuse.
+pub fn free(idx: usize) HeapError!void {
+    if (mem[idx].owner != Ownership.user) {
+        return HeapError.MemoryNotAllocated;
+    }
+    mem[idx].owner = Ownership.free;
+    batches_to_update.put(batchOf(idx), {}) catch unreachable;
+}
 
 //---------------------------------------------------
 //---------------------------------------------------

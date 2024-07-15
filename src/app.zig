@@ -3,7 +3,8 @@ const SDL = @import("sdl2");
 const SDLex = @import("SDLex.zig");
 const Vec2 = @import("Vec2.zig").Vec2;
 const View = @import("view.zig").View;
-const heap = @import("heap/internal.zig");
+const heap_internal = @import("heap/internal.zig");
+pub const heap = @import("heap/interface.zig");
 const design = @import("design.zig");
 const Operation = @import("operation.zig");
 const Animation = @import("animation.zig");
@@ -62,9 +63,11 @@ pub fn init() !void {
     renderer.present();
 
     //init heap
-    heap.initRand();
-    try heap.initTextures(renderer);
+    heap_internal.initRand();
+    try heap_internal.initTextures(renderer);
     initiallized = true;
+
+    try UI.init(renderer);
 }
 
 pub fn start() !void {
@@ -105,8 +108,11 @@ pub fn start() !void {
             }
         }
         try renderer.clear();
-        heap.draw(renderer, cam_view);
-        try UI.showSpeed(renderer, playback_speed);
+        heap_internal.draw(renderer, cam_view);
+        try UI.drawSpeed(playback_speed);
+        if (operation_manager.current_operation) |operation| {
+            try UI.drawAction(operation.data.action);
+        }
         renderer.present();
 
         const sleep_time: i128 = frame_time_nano - (std.time.nanoTimestamp() - start_time);
