@@ -5,7 +5,7 @@ const Vec2 = @import("Vec2.zig").Vec2;
 const View = @import("view.zig").View;
 const heap_internal = @import("heap/internal.zig");
 pub const heap = @import("heap/interface.zig");
-const design = @import("design.zig");
+const Design = @import("design.zig");
 const Operation = @import("operation.zig");
 const Animation = @import("animation.zig");
 const UI = @import("UI.zig");
@@ -27,7 +27,18 @@ pub var cam_view: View = undefined;
 var initiallized = false;
 var state: State = State.heap;
 var running_time: i128 = 0;
+
 var playback_speed: f128 = 1;
+
+pub fn scrollForSpeed(speed: *f128, scroll_delta: i32, mouse_pos: SDL.Point) bool {
+    if (SDL.c.SDL_PointInRect(@ptrCast(&mouse_pos), @ptrCast(&Design.UI.speed.rect)) == SDL.c.SDL_TRUE) {
+        speed.* *= (1.0 + @as(f128, @floatFromInt(scroll_delta)) / 10.0);
+        speed.* = @min(10.0, speed.*);
+        speed.* = @max(0.2, speed.*);
+        return true;
+    }
+    return false;
+}
 
 pub fn init() !void {
     if (initiallized) {
@@ -42,7 +53,7 @@ pub fn init() !void {
         return err;
     };
     renderer = try SDL.createRenderer(window, null, .{ .accelerated = true });
-    try renderer.setColor(design.BG_color);
+    try renderer.setColor(Design.BG_color);
     cam_view = View.init(&window);
     operation_manager = Operation.Manager.init();
 
@@ -51,13 +62,13 @@ pub fn init() !void {
     defer gpa.allocator().free(app_dir);
 
     const heap_font_path = try std.fmt.allocPrintZ(gpa.allocator(), "{s}/ioveska.ttf", .{app_dir});
-    design.heap.font = try SDL.ttf.openFont(heap_font_path, 200);
+    Design.heap.font = try SDL.ttf.openFont(heap_font_path, 200);
 
     const UI_font_path = try std.fmt.allocPrintZ(gpa.allocator(), "{s}/ioveska.ttf", .{app_dir});
-    design.UI.font = try SDL.ttf.openFont(UI_font_path, 200);
+    Design.UI.font = try SDL.ttf.openFont(UI_font_path, 200);
 
     //loading screen
-    const loading_surf = try design.heap.font.renderTextSolid("Loading...", SDL.Color.rgb(255, 255, 255));
+    const loading_surf = try Design.heap.font.renderTextSolid("Loading...", SDL.Color.rgb(255, 255, 255));
     const loading_tex = try SDL.createTextureFromSurface(renderer, loading_surf);
     try renderer.copy(loading_tex, .{ .x = 0, .y = 200, .width = 1000, .height = 600 }, null);
     renderer.present();
@@ -97,7 +108,7 @@ pub fn start() !void {
                     }
                 },
                 .mouse_wheel => {
-                    if (!UI.scrollForSpeed(&playback_speed, ev.mouse_wheel.delta_y, mouse_pos)) {
+                    if (!scrollForSpeed(&playback_speed, ev.mouse_wheel.delta_y, mouse_pos)) {
                         const delta: f32 = @floatFromInt(ev.mouse_wheel.delta_y);
                         const zoomed_port = cam_view.getZoomed(1.0 + delta / 8.0, mouse_pos);
                         cam_view.port = if (!cam_view.offLimits(zoomed_port)) zoomed_port else cam_view.port;
@@ -109,9 +120,9 @@ pub fn start() !void {
         }
         try renderer.clear();
         heap_internal.draw(renderer, cam_view);
-        try UI.drawSpeed(playback_speed);
+        UI.speed_element.draw(playback_speed);
         if (operation_manager.current_operation) |operation| {
-            try UI.drawAction(operation.data.action);
+            UI.action_element.draw(@intFromEnum(operation.data.action));
         }
         renderer.present();
 

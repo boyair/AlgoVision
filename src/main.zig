@@ -28,3 +28,4 @@ pub fn main() !void {
     app.log("{d},{d},{d},{d}\n", app.cam_view.port);
     try app.start();
 }
+//TODO add search action with type void so that the printed action wont be "none" when searching place to allocate.

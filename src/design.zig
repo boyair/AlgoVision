@@ -29,14 +29,19 @@ pub const heap = struct {
 
 pub const UI = struct {
     pub var font: SDL.ttf.Font = undefined;
-    pub const speed = struct {
-        pub const rect: SDL.Rectangle = .{ .x = 0, .y = 0, .width = 130, .height = 100 };
-        pub const fg: SDL.Color = SDL.Color.white;
-        pub const bg: SDL.Color = SDL.Color.rgba(0, 0, 0, 0);
+    pub const element = struct {
+        rect: SDL.Rectangle,
+        fg: SDL.Color,
+        bg: SDL.Color,
     };
-    pub const action = struct {
-        pub const rect: SDL.Rectangle = .{ .x = 400, .y = 0, .width = 200, .height = 100 };
-        pub const fg: SDL.Color = SDL.Color.rgb(200, 200, 0);
-        pub const bg: SDL.Color = SDL.Color.rgba(0, 0, 0, 0);
+    pub const speed = element{
+        .rect = .{ .x = 0, .y = 0, .width = 130, .height = 100 },
+        .fg = SDL.Color.white,
+        .bg = SDL.Color.rgba(0, 0, 0, 255),
+    };
+    pub const action = element{
+        .rect = .{ .x = 400, .y = 0, .width = 200, .height = 100 },
+        .fg = SDL.Color.rgb(200, 200, 0),
+        .bg = SDL.Color.rgba(0, 0, 0, 255),
     };
 };
