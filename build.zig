@@ -36,13 +36,11 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     sdk.link(exe, .static, .SDL2); // link SDL2 as a static library
+    sdk.link(exe, .static, .SDL2_ttf); // link SDL2_ttf as a static library
 
     // Add "sdl2" package that exposes the SDL2 api (like SDL_Init or SDL_CreateWindow)
     exe.root_module.addImport("sdl2", sdk.getWrapperModule());
     //link system installed sdl extra libs for proper linkage.
-    exe.linkSystemLibrary("SDL2_image");
-    exe.linkSystemLibrary("SDL2_ttf");
-    exe.linkSystemLibrary("SDL2_mixer");
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
     // step when running `zig build`).
