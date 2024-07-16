@@ -11,7 +11,7 @@ const Operation = @import("operation.zig");
 
 pub fn main() !void {
     try app.init();
-    const mem = heap.allocate(12);
+    const mem = heap.allocate(40);
     var sum: i64 = 0;
     for (mem) |idx| {
         sum += heap.get(idx);
@@ -28,4 +28,4 @@ pub fn main() !void {
     app.log("{d},{d},{d},{d}\n", app.cam_view.port);
     try app.start();
 }
-//TODO add search action with type void so that the printed action wont be "none" when searching place to allocate.
+//TODO move to using ttf module from SDL.zig

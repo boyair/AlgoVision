@@ -1,13 +1,13 @@
 const SDL = @import("sdl2");
 const std = @import("std");
-const Action = @import("action.zig").Action;
+const Action = @import("action.zig");
 const Design = @import("design.zig").UI;
 var owner_renderer: SDL.Renderer = undefined;
 
 pub fn init(renderer: SDL.Renderer) !void {
     owner_renderer = renderer;
     try speed_element.updateTexture(1.0);
-    try action_element.updateTexture(@intFromEnum(Action.none));
+    try action_element.updateTexture(Action.actions.none);
 }
 fn uiElement(value_type: type, print: fn (buf: []u8, val: value_type) [:0]u8) type {
     return struct {
@@ -41,13 +41,11 @@ fn printSpeed(buf: []u8, speed: f128) [:0]u8 {
 }
 pub var speed_element = uiElement(f128, printSpeed){ .texture = undefined, .cache = 1.0, .design = &Design.speed };
 
-const action_enum = std.meta.FieldEnum(Action);
-fn printAction(buf: []u8, action: @typeInfo(action_enum).Enum.tag_type) [:0]u8 {
-    const tag: action_enum = @enumFromInt(action);
-    return std.fmt.bufPrintZ(buf, "{s}", .{@tagName(tag)}) catch unreachable;
+fn printAction(buf: []u8, action: Action.actions) [:0]u8 {
+    return std.fmt.bufPrintZ(buf, "{s}", .{@tagName(action)}) catch unreachable;
 }
 
-pub var action_element = uiElement(@typeInfo(action_enum).Enum.tag_type, printAction){ .texture = undefined, .cache = undefined, .design = &Design.action };
+pub var action_element = uiElement(Action.actions, printAction){ .texture = undefined, .cache = undefined, .design = &Design.action };
 
 //action viewer
 var action_tex: SDL.Texture = undefined;

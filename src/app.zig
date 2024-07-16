@@ -122,7 +122,7 @@ pub fn start() !void {
         heap_internal.draw(renderer, cam_view);
         UI.speed_element.draw(playback_speed);
         if (operation_manager.current_operation) |operation| {
-            UI.action_element.draw(@intFromEnum(operation.data.action));
+            UI.action_element.draw(operation.data.action);
         }
         renderer.present();
 

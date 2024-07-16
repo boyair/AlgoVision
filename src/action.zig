@@ -4,8 +4,17 @@ const design = @import("design.zig");
 const app = @import("app.zig");
 const heap = @import("heap/internal.zig");
 
-pub const Action = union(enum) {
+pub const actions = enum(u8) {
+    set_value_heap,
+    search,
+    allocate,
+    free,
+    print,
+    none,
+};
+pub const Action = union(actions) {
     set_value_heap: struct { idx: usize, value: i64 }, //set a value on the heap.
+    search: void,
     allocate: usize,
     free: usize,
     print: []const u8,
@@ -31,6 +40,6 @@ pub fn perform(action: Action) void {
         .print => |str| {
             std.debug.print("{s}", .{str});
         },
-        .none => {},
+        else => {},
     }
 }
