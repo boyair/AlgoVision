@@ -82,7 +82,6 @@ pub fn init() !void {
 }
 
 pub fn start() !void {
-    var holding_right = false;
     var last_iteration_time: i128 = 0;
     mainLoop: while (true) {
         const start_time = std.time.nanoTimestamp();
@@ -92,14 +91,9 @@ pub fn start() !void {
         const mouse_pos: SDL.Point = .{ .x = mouse_state.x, .y = mouse_state.y };
         while (SDL.pollEvent()) |ev| {
             switch (ev) {
-                .mouse_button_down => {
-                    if (ev.mouse_button_down.button == SDL.MouseButton.right) {
-                        holding_right = true;
-                    }
-                },
-                .mouse_button_up => {
-                    if (ev.mouse_button_up.button == SDL.MouseButton.right) {
-                        holding_right = false;
+                .key_down => {
+                    if (ev.key_down.scancode == .left) {
+                        operation_manager.undoLast();
                     }
                 },
                 .window => {

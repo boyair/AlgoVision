@@ -11,21 +11,16 @@ const Operation = @import("operation.zig");
 
 pub fn main() !void {
     try app.init();
-    const mem = heap.allocate(40);
-    var sum: i64 = 0;
+    const mem = heap.allocate(4);
     for (mem) |idx| {
-        sum += heap.get(idx);
-        heap.set(idx, @intCast(idx));
+        heap.set(idx, 69);
     }
-    app.log("number:  {d}\n", .{heap.get(mem[0])});
-    heap.set(mem[0], sum);
-    app.heap.free(mem);
-    const mem27 = heap.allocate(27);
-    for (mem27) |idx| {
-        heap.set(idx, @intCast(idx));
-    }
-    app.log("DONE!\n", .{});
-    app.log("{d},{d},{d},{d}\n", app.cam_view.port);
     try app.start();
 }
-//TODO move to using ttf module from SDL.zig
+//TODO
+//complete undo system
+//change window to be fullscreen (make it work on all 16:9 resolutions)
+//make a seperate renderer for UI on the left(leave a squre region for the regular view)
+//start making the stack
+//organize inrternal code for heap
+//make test file for heap

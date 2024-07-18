@@ -20,16 +20,23 @@ pub const Operation = struct {
     action: Action.Action,
 };
 
+pub const Undo = struct {
+    view: SDL.RectangleF,
+    action: Action,
+};
+
 pub const Manager = struct {
     operation_queue: std.DoublyLinkedList(Operation),
+    undo_queue: std.DoublyLinkedList(Action.Action),
     current_operation: ?*std.DoublyLinkedList(Operation).Node,
-    animation_state: Animation.ZoomAnimation, // a copy of current animation to not affect the animation directly in the operation.
+    animation_state: Animation.ZoomAnimation, // a copy of current animation to not affect the animation directly.
     time_paused: i128,
     state: OperationState,
 
     pub fn init() Manager {
         return .{
             .operation_queue = std.DoublyLinkedList(Operation){},
+            .undo_queue = std.DoublyLinkedList(Action.Action){},
             .current_operation = undefined,
             .animation_state = undefined,
             .time_paused = 0,
@@ -47,7 +54,7 @@ pub const Manager = struct {
         };
 
         self.operation_queue.append(node);
-        //init currents on first push
+        //init states on first push
         if (self.operation_queue.len == 1) {
             self.current_operation = self.operation_queue.first;
             self.animation_state = self.current_operation.?.data.animation;
@@ -64,7 +71,15 @@ pub const Manager = struct {
                     }
                 },
                 .act => {
-                    Action.perform(current_operation.data.action);
+                    //create undo node
+                    const undo_node = app.Allocator.allocator().create(std.DoublyLinkedList(Action.Action).Node) catch {
+                        @panic("could not allocate memory for operation.");
+                    };
+                    undo_node.* = .{
+                        .data = Action.perform(current_operation.data.action), //action performed here.
+                    };
+                    self.undo_queue.append(undo_node);
+                    std.debug.print("pushed\noperation: {s}\nsize: {d}\n\n", .{ @tagName(undo_node.data), self.undo_queue.len });
                 },
                 .pause => {
                     self.time_paused += delta_time;
@@ -72,7 +87,10 @@ pub const Manager = struct {
                         return;
                 },
                 .done => {
-                    self.current_operation = current_operation.next;
+                    self.current_operation = current_operation.next orelse current_operation;
+                    if (current_operation == self.operation_queue.last) {
+                        return;
+                    }
                     const current_view = current_operation.data.animation.end_state;
                     self.animation_state = if (current_operation.next) |nxt| nxt.data.animation else Animation.ZoomAnimation.init(self.animation_state.view, current_view, current_view, 0);
                     self.animation_state.start_state = current_view;
@@ -82,5 +100,37 @@ pub const Manager = struct {
             //iterate states
             self.state = @enumFromInt((@intFromEnum(self.state) + 1) % (@intFromEnum(OperationState.done) + 1));
         }
+    }
+
+    pub fn undoLast(self: *Manager) void {
+        const current_performed = @intFromEnum(self.state) > @intFromEnum(OperationState.act);
+        //find last operation (if not found return)
+        const last_performed = blk: {
+            if (self.current_operation) |op| {
+                if (current_performed) {
+                    break :blk self.current_operation;
+                }
+                if (op.prev) |prev| {
+                    break :blk prev;
+                }
+            }
+            return;
+        };
+        //set view port to view the action being undone
+        //  const view = self.current_operation.?.data.animation.view;
+        //  view.port = last_performed.?.data.animation.start_state;
+        //call last undo and pop it (only if current_operation already performed(self.state > act))
+        _ = Action.perform(self.undo_queue.pop().?.data);
+        //move current_operation pointer one operation back
+        self.current_operation = last_performed;
+        self.resetState();
+    }
+    fn resetState(self: *Manager) void {
+        if (self.current_operation == null)
+            return;
+        const current_view = if (self.current_operation.?.prev) |prev| prev.data.animation.end_state else self.current_operation.?.data.animation.end_state;
+        self.animation_state = self.current_operation.?.data.animation;
+        self.state = OperationState.animate;
+        self.animation_state.start_state = current_view;
     }
 };

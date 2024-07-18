@@ -237,7 +237,7 @@ pub fn drawBatch(idx: idx2D, renderer: SDL.Renderer, view: View) void {
 
 //---------------------------------------------------
 //---------------------------------------------------
-//-------------------INTERFACE-----------------------
+//-------------------INTERACTION---------------------
 //---------------------------------------------------
 //---------------------------------------------------
 
@@ -249,10 +249,6 @@ pub fn get(idx: usize) HeapError!i64 {
         mem_runtime[idx].val
     else
         HeapError.MemoryNotAllocated;
-}
-
-pub fn setBG(color: SDL.Color) void {
-    Operation.push(Operation.Operation{ .change_bg = color });
 }
 
 pub fn set(idx: usize, value: i64, renderer: SDL.Renderer) !void {
