@@ -1,0 +1,7 @@
+{
+  "x86_64-windows-gnu": {
+    "include": "windows/include",
+    "libs": "windows/lib",
+    "bin": "windows/bin"
+  }
+}

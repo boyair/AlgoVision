@@ -35,8 +35,6 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    sdk.link(exe, .static, .SDL2); // link SDL2 as a static library
-    sdk.link(exe, .static, .SDL2_ttf); // link SDL2_ttf as a static library
 
     // Add "sdl2" package that exposes the SDL2 api (like SDL_Init or SDL_CreateWindow)
     exe.root_module.addImport("sdl2", sdk.getWrapperModule());
@@ -44,6 +42,28 @@ pub fn build(b: *std.Build) void {
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
     // step when running `zig build`).
+    if (target.result.isMinGW()) {
+        sdk.link(exe, .dynamic, .SDL2); // link SDL2 as a static library
+        sdk.link(exe, .dynamic, .SDL2_ttf); // link SDL2_ttf as a static library
+        exe.linkSystemLibrary("mingw32");
+        exe.linkSystemLibrary("SDL2main");
+        exe.linkSystemLibrary("SDL2");
+        exe.linkSystemLibrary("SDL2_ttf");
+        exe.linkSystemLibrary("user32");
+        exe.linkSystemLibrary("gdi32");
+        exe.linkSystemLibrary("winmm");
+        exe.linkSystemLibrary("imm32");
+        exe.linkSystemLibrary("ole32");
+        exe.linkSystemLibrary("oleaut32");
+        exe.linkSystemLibrary("version");
+        exe.linkSystemLibrary("uuid");
+        exe.linkSystemLibrary("shell32");
+        exe.linkSystemLibrary("setupapi");
+        exe.linkLibC();
+    } else {
+        sdk.link(exe, .static, .SDL2); // link SDL2 as a static library
+        sdk.link(exe, .static, .SDL2_ttf); // link SDL2_ttf as a static library
+    }
     b.installArtifact(exe);
 
     // This *creates* a Run step in the build graph, to be executed when another

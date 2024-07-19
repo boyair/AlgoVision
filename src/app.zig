@@ -48,7 +48,9 @@ pub fn init() !void {
 
     //  init basics
     try SDLex.fullyInitSDL();
-    window = SDL.createWindow("Application", .{ .centered = {} }, .{ .centered = {} }, 1920, 1080, .{ .vis = .shown, .resizable = false, .borderless = true, .mouse_capture = true }) catch |err| {
+    const display_info = SDL.DisplayMode.getDesktopInfo(0) catch unreachable;
+    std.debug.print("screen resolution: {d}, {d}\n", .{ display_info.w, display_info.h });
+    window = SDL.createWindow("Application", .{ .centered = {} }, .{ .centered = {} }, @intCast(display_info.w), @intCast(display_info.h), .{ .vis = .shown, .resizable = false, .borderless = true, .mouse_capture = true }) catch |err| {
         std.debug.print("Failed to load window! {s}\n", .{@errorName(err)});
         return err;
     };
@@ -60,6 +62,7 @@ pub fn init() !void {
         .width = @divExact(window.getSize().width * 3, 4),
         .height = window.getSize().height,
     });
+
     operation_manager = Operation.Manager.init();
 
     //init fonts
