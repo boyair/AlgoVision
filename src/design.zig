@@ -24,11 +24,12 @@ pub const heap = struct {
             pub const bg: SDL.Color = SDL.Color.blue;
         };
     };
-    pub const position: SDL.Point = .{ .x = 0, .y = 0 };
+    pub const position: SDL.Point = .{ .x = -100, .y = -300 };
 };
 
 pub const UI = struct {
     pub var font: SDL.ttf.Font = undefined;
+    pub const bg = SDL.Color.black;
     pub const element = struct {
         rect: SDL.Rectangle,
         fg: SDL.Color,

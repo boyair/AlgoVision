@@ -48,13 +48,18 @@ pub fn init() !void {
 
     //  init basics
     try SDLex.fullyInitSDL();
-    window = SDL.createWindow("Application", .{ .centered = {} }, .{ .centered = {} }, 1000, 1000, .{ .vis = .shown, .resizable = false, .borderless = false, .mouse_capture = true }) catch |err| {
+    window = SDL.createWindow("Application", .{ .centered = {} }, .{ .centered = {} }, 1920, 1080, .{ .vis = .shown, .resizable = false, .borderless = true, .mouse_capture = true }) catch |err| {
         std.debug.print("Failed to load window! {s}\n", .{@errorName(err)});
         return err;
     };
     renderer = try SDL.createRenderer(window, null, .{ .accelerated = true });
     try renderer.setColor(Design.BG_color);
-    cam_view = View.init(&window);
+    cam_view = View.init(.{
+        .x = 0,
+        .y = 0,
+        .width = @divExact(window.getSize().width * 3, 4),
+        .height = window.getSize().height,
+    });
     operation_manager = Operation.Manager.init();
 
     //init fonts
@@ -95,23 +100,26 @@ pub fn start() !void {
                     if (ev.key_down.scancode == .left) {
                         operation_manager.undoLast();
                     }
-                },
-                .window => {
-                    if (ev.window.type == .resized) {
-                        cam_view.window_size = window.getSize();
+                    if (ev.key_down.scancode == .right) {
+                        operation_manager.fastForward();
                     }
+                    if (ev.key_down.scancode == .escape)
+                        break :mainLoop;
                 },
                 .mouse_wheel => {
                     if (!scrollForSpeed(&playback_speed, ev.mouse_wheel.delta_y, mouse_pos)) {
                         const delta: f32 = @floatFromInt(ev.mouse_wheel.delta_y);
                         const zoomed_port = cam_view.getZoomed(1.0 + delta / 8.0, mouse_pos);
-                        cam_view.port = if (!cam_view.offLimits(zoomed_port)) zoomed_port else cam_view.port;
+                        cam_view.cam = if (!cam_view.offLimits(zoomed_port)) zoomed_port else cam_view.cam;
                     }
                 },
+
                 .quit => break :mainLoop,
                 else => {},
             }
         }
+
+        try renderer.setViewport(cam_view.port);
         try renderer.clear();
         heap_internal.draw(renderer, cam_view);
         UI.speed_element.draw(playback_speed);

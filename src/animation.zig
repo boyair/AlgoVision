@@ -13,7 +13,7 @@ pub const ZoomAnimation = struct {
 
     pub fn init(view: *View, start: ?SDL.RectangleF, end: SDL.RectangleF, duration_nano: i128) ZoomAnimation {
         return ZoomAnimation{
-            .start_state = start orelse view.port,
+            .start_state = start orelse view.cam,
             .end_state = end,
             .total_duration = duration_nano,
             .view = view,
@@ -27,11 +27,11 @@ pub const ZoomAnimation = struct {
         self.passed_duration += time_delta;
         if (self.done or self.passed_duration >= self.total_duration) {
             self.done = true;
-            self.view.port = self.end_state;
+            self.view.cam = self.end_state;
             return;
         }
         const fraction_passed: f128 = @as(f128, @floatFromInt(self.passed_duration)) / @as(f128, @floatFromInt(self.total_duration));
-        self.view.port = SDL.RectangleF{
+        self.view.cam = SDL.RectangleF{
             .x = @floatCast((self.end_state.x - self.start_state.x) * fraction_passed + self.start_state.x),
             .y = @floatCast((self.end_state.y - self.start_state.y) * fraction_passed + self.start_state.y),
             .width = @floatCast((self.end_state.width - self.start_state.width) * fraction_passed + self.start_state.width),

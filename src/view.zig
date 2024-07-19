@@ -9,60 +9,61 @@ const viewError = error{
 };
 
 pub const View = struct {
-    port: SDL.RectangleF,
-    window_size: SDL.Size,
+    cam: SDL.RectangleF, // camera
+    port: SDL.Rectangle, // window part being drawn on
     border: ?SDL.RectangleF = null, // view port limited to stay inside border
     max_size: ?Vec2 = null,
     min_size: ?Vec2 = null,
 
-    pub fn init(window: *SDL.Window) View {
-        const window_size: SDL.Size = window.getSize();
+    pub fn init(port: SDL.Rectangle) View {
         return .{
-            .port = .{ .x = 0, .y = 0, .width = @floatFromInt(window_size.width), .height = @floatFromInt(window_size.height) },
-            .window_size = window.getSize(),
+            .cam = SDLex.convertSDLRect(port),
+            .port = port,
         };
     }
 
     pub fn convert(self: View, original: SDL.RectangleF) viewError!SDL.RectangleF {
-        if (!original.hasIntersection(self.port)) {
+        if (!original.hasIntersection(self.cam)) {
             return viewError.outOfView;
         }
         //turn values to floats to allow fractional offset and scaling calculations.
-        const win_sizeF = conertVecSize(self.window_size);
+        const portF = SDLex.convertSDLRect(self.port);
         var result = original;
-        result.x -= self.port.x;
-        result.y -= self.port.y;
-        result.x *= win_sizeF.x / self.port.width;
-        result.y *= win_sizeF.y / self.port.height;
-        result.width *= win_sizeF.x / self.port.width;
-        result.height *= win_sizeF.y / self.port.height;
+        result.x -= self.cam.x;
+        result.y -= self.cam.y;
+        result.x += portF.x;
+        result.y += portF.y;
+        result.x *= portF.width / self.cam.width;
+        result.y *= portF.height / self.cam.height;
+        result.width *= portF.width / self.cam.width;
+        result.height *= portF.height / self.cam.height;
         return result;
     }
-    pub fn scale_vec_win_to_port(self: View, original: Vec2) Vec2 {
-        const win_sizeF = conertVecSize(self.window_size);
-        return Vec2{ .x = original.x * win_sizeF.x / self.port.width, .y = original.y * win_sizeF.y / self.port.height };
+    pub fn scale_vec_port_to_cam(self: View, original: Vec2) Vec2 {
+        const portF = SDLex.convertSDLRect(self.port);
+        return Vec2{ .x = original.x * portF.width / self.cam.width, .y = original.y * portF.height / self.cam.height };
     }
-    pub fn scale_vec_port_to_win(self: View, original: Vec2) Vec2 {
-        const win_sizeF = conertVecSize(self.window_size);
-        return Vec2{ .x = original.x * self.port.width / win_sizeF.x, .y = original.y * self.port.height / win_sizeF.y };
+    pub fn scale_vec_cam_to_port(self: View, original: Vec2) Vec2 {
+        const portF = SDLex.convertSDLRect(self.port);
+        return Vec2{ .x = original.x * self.cam.width / portF.width, .y = original.y * self.cam.height / portF.height };
     }
     pub fn keepInLimits(self: *View) bool {
-        const original_port = self.port;
+        const original_port = self.cam;
         if (self.min_size) |min| {
-            self.port.width = @max(self.port.width, min.x);
-            self.port.height = @max(self.port.height, min.y);
+            self.cam.width = @max(self.cam.width, min.x);
+            self.cam.height = @max(self.cam.height, min.y);
         }
         if (self.max_size) |max| {
-            self.port.width = @min(self.port.width, max.x);
-            self.port.height = @min(self.port.height, max.y);
+            self.cam.width = @min(self.cam.width, max.x);
+            self.cam.height = @min(self.cam.height, max.y);
         }
         if (self.border) |border| {
-            self.port.x = @max(border.x, self.port.x);
-            self.port.y = @max(border.y, self.port.y);
-            self.port.x = @min(border.x + border.width - self.port.width, self.port.x);
-            self.port.y = @min(border.y + border.height - self.port.height, self.port.y);
+            self.cam.x = @max(border.x, self.cam.x);
+            self.cam.y = @max(border.y, self.cam.y);
+            self.cam.x = @min(border.x + border.width - self.cam.width, self.cam.x);
+            self.cam.y = @min(border.y + border.height - self.cam.height, self.cam.y);
         }
-        return !SDLex.compareRect(original_port, self.port);
+        return !SDLex.compareRect(original_port, self.cam);
     }
     pub fn offLimits(self: View, future_port: SDL.RectangleF) bool {
         if (self.min_size) |min| {
@@ -88,32 +89,32 @@ pub const View = struct {
             return;
 
         //turn values to floats to allow fractional offset and scaling calculations.
-        const win_sizeF = conertVecSize(self.window_size);
-        const save_rect: SDL.RectangleF = self.port;
-        self.port.width /= scale;
-        self.port.height /= scale;
+        const portF = SDLex.convertSDLRect(self.port);
+        const save_rect: SDL.RectangleF = self.cam;
+        self.cam.width /= scale;
+        self.cam.height /= scale;
         if (point) |p| {
-            self.port.x += (save_rect.width - self.port.width) * @as(f32, @floatFromInt(p.x)) / win_sizeF.x;
-            self.port.y += (save_rect.height - self.port.height) * @as(f32, @floatFromInt(p.y)) / win_sizeF.y;
+            self.cam.x += (save_rect.width - self.cam.width) * @as(f32, @floatFromInt(p.x)) / portF.width;
+            self.cam.y += (save_rect.height - self.cam.height) * @as(f32, @floatFromInt(p.y)) / portF.height;
         } else {
-            self.port.x += (save_rect.width - self.port.width) / 2;
-            self.port.y += (save_rect.height - self.port.height) / 2;
+            self.cam.x += (save_rect.width - self.cam.width) / 2;
+            self.cam.y += (save_rect.height - self.cam.height) / 2;
         }
         _ = keepInLimits(self);
     }
     pub fn getZoomed(self: View, scale: f32, point: ?SDL.Point) SDL.RectangleF {
         if (scale == 0) {
-            return self.port;
+            return self.cam;
         }
         //turn values to floats to allow fractional offset and scaling calculations.
-        const win_sizeF = conertVecSize(self.window_size);
-        const save_rect: SDL.RectangleF = self.port;
-        var result = self.port;
+        const portF = SDLex.convertSDLRect(self.port);
+        const save_rect: SDL.RectangleF = self.cam;
+        var result = self.cam;
         result.width /= scale;
         result.height /= scale;
         if (point) |p| {
-            result.x += (save_rect.width - result.width) * @as(f32, @floatFromInt(p.x)) / win_sizeF.x;
-            result.y += (save_rect.height - result.height) * @as(f32, @floatFromInt(p.y)) / win_sizeF.y;
+            result.x += (save_rect.width - result.width) * @as(f32, @floatFromInt(p.x)) / portF.width;
+            result.y += (save_rect.height - result.height) * @as(f32, @floatFromInt(p.y)) / portF.height;
         } else {
             result.x += (save_rect.width - result.width) / 2;
             result.y += (save_rect.height - result.height) / 2;

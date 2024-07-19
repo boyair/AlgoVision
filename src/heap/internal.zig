@@ -109,7 +109,7 @@ fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
     //memory section to use based on batch_index
     const mem_start: idx2D = .{ .x = @intCast(batch_size.width * index.x), .y = @intCast(batch_size.height * index.y) };
 
-    const original_renderer_color = try SDL.Renderer.getColor(renderer);
+    const last_color = try SDL.Renderer.getColor(renderer);
 
     for (mem_start.y..mem_start.y + batch_size.height) |row| {
         for (mem_start.x..mem_start.x + batch_size.width) |column| {
@@ -133,13 +133,13 @@ fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
             };
 
             surf = design.font.renderTextBlended(num_str, color_fg) catch handle: {
-                std.debug.print("failed to load surface for texture\npossible used bad font.\n", .{});
+                std.debug.print("failed to load surface for texture\nmight be caused by font error font.\n", .{});
                 break :handle try SDL.createRgbSurfaceWithFormat(32, 32, SDL.PixelFormatEnum.rgba8888);
             };
             const texture = try SDL.createTextureFromSurface(renderer, surf);
             var block_rect = SDLex.convertSDLRect(blockRect(idx1));
-            block_rect.x -= @intCast(index.x * batch_size.width * design.block.full_size.width + 1);
-            block_rect.y -= @intCast(index.y * batch_size.height * design.block.full_size.height + 1);
+            block_rect.x -= @as(c_int, @intCast(index.x * batch_size.width * design.block.full_size.width)) + design.position.x;
+            block_rect.y -= @as(c_int, @intCast(index.y * batch_size.height * design.block.full_size.height)) + design.position.y;
 
             try renderer.setColor(color_bg);
             try renderer.fillRect(block_rect);
@@ -191,7 +191,7 @@ fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
         if (rect.x < chunck_limit_width)
             try renderer.fillRect(rect);
     }
-    try renderer.setColor(original_renderer_color);
+    try renderer.setColor(last_color);
     try renderer.setTarget(last_target);
 }
 
@@ -224,8 +224,8 @@ pub fn draw(renderer: SDL.Renderer, view: View) void {
 
 pub fn drawBatch(idx: idx2D, renderer: SDL.Renderer, view: View) void {
     const batch_rect = SDL.RectangleF{
-        .x = @floatFromInt(idx.x * design.block.full_size.width * batch_size.width),
-        .y = @floatFromInt(idx.y * design.block.full_size.height * batch_size.height),
+        .x = @floatFromInt(@as(c_int, @intCast(idx.x)) * design.block.full_size.width * batch_size.width + design.position.x),
+        .y = @floatFromInt(@as(c_int, @intCast(idx.y)) * design.block.full_size.height * batch_size.height + design.position.y),
         .width = @floatFromInt((design.block.full_size.width) * batch_size.width),
         .height = @floatFromInt((design.block.full_size.height) * batch_size.height),
     };
@@ -319,12 +319,6 @@ pub fn findFreeRange(size: usize) HeapError!struct { start: usize, end: usize } 
     return .{ .start = start_idx, .end = end_idx };
 }
 
-//---------------------------------------------------
-//---------------------------------------------------
-//--------------INTERNAL ABSTRACTIONS----------------
-//---------------------------------------------------
-//---------------------------------------------------
-
 fn batchOf(mem_idx: usize) idx2D {
     const idx_2d: idx2D = idx2D.init(mem_idx, columns);
     return .{ .x = @divFloor(idx_2d.x, batch_size.width), .y = @divFloor(idx_2d.y, batch_size.height) };
@@ -334,7 +328,7 @@ pub fn blockRect(block_idx: usize) SDL.RectangleF {
     const idx_2d = idx2D.init(block_idx, columns);
     const rect = SDL.Rectangle{
         .x = @intCast(design.position.x + @as(c_int, @intCast(idx_2d.x)) * design.block.full_size.width),
-        .y = @intCast(design.position.y + idx_2d.y * design.block.full_size.height),
+        .y = @intCast(design.position.y + @as(c_int, @intCast(idx_2d.y)) * design.block.full_size.height),
         .width = @intCast(design.block.full_size.width),
         .height = @intCast(design.block.full_size.height),
     };

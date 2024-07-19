@@ -116,10 +116,7 @@ pub const Manager = struct {
             }
             return;
         };
-        //set view port to view the action being undone
-        //  const view = self.current_operation.?.data.animation.view;
-        //  view.port = last_performed.?.data.animation.start_state;
-        //call last undo and pop it (only if current_operation already performed(self.state > act))
+        //call last undo and pop it
         _ = Action.perform(self.undo_queue.pop().?.data);
         //move current_operation pointer one operation back
         self.current_operation = last_performed;
@@ -132,5 +129,22 @@ pub const Manager = struct {
         self.animation_state = self.current_operation.?.data.animation;
         self.state = OperationState.animate;
         self.animation_state.start_state = current_view;
+    }
+    pub fn fastForward(self: *Manager) void {
+        if (self.current_operation == null)
+            return;
+        const current_performed = @intFromEnum(self.state) > @intFromEnum(OperationState.act);
+        // perform action if not performed.
+        if (!current_performed) {
+            const undo_node = app.Allocator.allocator().create(std.DoublyLinkedList(Action.Action).Node) catch {
+                @panic("could not allocate memory for operation.");
+            };
+            undo_node.* = .{
+                .data = Action.perform(self.current_operation.?.data.action), //action performed here.
+            };
+            self.undo_queue.append(undo_node);
+            std.debug.print("pushed\noperation: {s}\nsize: {d}\n\n", .{ @tagName(undo_node.data), self.undo_queue.len });
+        }
+        self.state = .done;
     }
 };
