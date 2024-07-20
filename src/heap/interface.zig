@@ -75,7 +75,7 @@ pub fn get(idx: usize) i64 {
 }
 
 //return array (slice) of indices of allocated memory.
-pub fn allocate(size: usize) []usize {
+pub fn allocate(allocator: std.mem.Allocator, size: usize) []usize {
     const range = Internals.findFreeRange(size) catch {
         @panic("could not find large enough buffer");
     };
@@ -86,7 +86,7 @@ pub fn allocate(size: usize) []usize {
         const operation: Operation.Operation = .{ .animation = animation, .action = .{ .search = {} }, .pause_time_nano = 200_000_000 };
         app.operation_manager.push(operation);
     }
-    var indexes = std.ArrayList(usize).init(Internals.gpa.allocator());
+    var indexes = std.ArrayList(usize).init(allocator);
     for (range.start..range.end) |idx| {
         Internals.mem_runtime[idx].owner = .user;
         indexes.append(idx) catch unreachable;
@@ -98,7 +98,7 @@ pub fn allocate(size: usize) []usize {
     return indexes.toOwnedSlice() catch unreachable;
 }
 
-pub fn free(indices: []usize) void {
+pub fn free(allocator: std.mem.Allocator, indices: []usize) void {
     for (indices) |idx| {
         if (Internals.mem_runtime[idx].owner == .user) {
             Internals.mem_runtime[idx].owner = .free;
@@ -107,5 +107,5 @@ pub fn free(indices: []usize) void {
             app.operation_manager.push(operation);
         } else @panic("failed to free memory: not allocated");
     }
-    Internals.gpa.allocator().free(indices);
+    allocator.free(indices);
 }
