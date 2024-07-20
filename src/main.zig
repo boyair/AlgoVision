@@ -18,9 +18,7 @@ pub fn main() !void {
     try app.start();
 }
 //TODO
-//add an option to skip pause and animation with right arrow (keep only action)
-//change window to be fullscreen (make it work on all 16:9 resolutions)
-//make a seperate renderer for UI on the right(leave a squre region for the regular view)
+//make ui view use the view class with a generated port
 //start making the stack
 //organize inrternal code for heap
 //make test file for heap

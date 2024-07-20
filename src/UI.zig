@@ -1,4 +1,5 @@
 const SDL = @import("sdl2");
+const SDLex = @import("SDLex.zig");
 const std = @import("std");
 const Action = @import("action.zig");
 const Design = @import("design.zig").UI;
@@ -19,10 +20,10 @@ fn uiElement(value_type: type, print: fn (buf: []u8, val: value_type) [:0]u8) ty
                 self.updateTexture(value) catch unreachable;
                 self.cache = value;
             }
-            owner_renderer.copy(self.texture, self.design.rect, null) catch unreachable;
+            Design.view.draw(SDLex.convertSDLRect(self.design.rect), self.texture, owner_renderer);
         }
         pub fn updateTexture(self: *@This(), value: value_type) !void {
-            var text_buffer: [22]u8 = undefined;
+            var text_buffer: [40]u8 = undefined;
             const num_str = print(&text_buffer, value);
 
             const surf = Design.font.renderTextBlended(num_str, self.design.fg) catch handle: {
@@ -37,12 +38,12 @@ fn uiElement(value_type: type, print: fn (buf: []u8, val: value_type) [:0]u8) ty
 }
 
 fn printSpeed(buf: []u8, speed: f128) [:0]u8 {
-    return std.fmt.bufPrintZ(buf, "{d:.2}", .{speed}) catch unreachable;
+    return std.fmt.bufPrintZ(buf, "speed: {d:.2}", .{speed}) catch unreachable;
 }
 pub var speed_element = uiElement(f128, printSpeed){ .texture = undefined, .cache = 1.0, .design = &Design.speed };
 
 fn printAction(buf: []u8, action: Action.actions) [:0]u8 {
-    return std.fmt.bufPrintZ(buf, "{s}", .{@tagName(action)}) catch unreachable;
+    return std.fmt.bufPrintZ(buf, "action: {s:<16}", .{@tagName(action)}) catch unreachable;
 }
 
 pub var action_element = uiElement(Action.actions, printAction){ .texture = undefined, .cache = undefined, .design = &Design.action };
@@ -70,4 +71,12 @@ fn updateTexAction(action: Action) !void {
     action_tex = try SDL.createTextureFromSurface(owner_renderer, surf);
     try action_tex.setBlendMode(.blend);
     surf.destroy();
+}
+
+pub fn drawBG() !void {
+    const last_color = try owner_renderer.getColor();
+    try owner_renderer.setColor(SDL.Color.black);
+
+    try owner_renderer.fillRect(Design.view.port);
+    try owner_renderer.setColor(last_color);
 }

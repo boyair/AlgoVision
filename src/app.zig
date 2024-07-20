@@ -31,7 +31,9 @@ var running_time: i128 = 0;
 var playback_speed: f128 = 1;
 
 pub fn scrollForSpeed(speed: *f128, scroll_delta: i32, mouse_pos: SDL.Point) bool {
-    if (SDL.c.SDL_PointInRect(@ptrCast(&mouse_pos), @ptrCast(&Design.UI.speed.rect)) == SDL.c.SDL_TRUE) {
+    const converted_rect = SDLex.convertSDLRect(Design.UI.view.convert(SDLex.convertSDLRect(Design.UI.speed.rect)) catch return false);
+    if (SDL.c.SDL_PointInRect(@ptrCast(&mouse_pos), @ptrCast(&converted_rect)) == SDL.c.SDL_TRUE) {
+        std.debug.print("True", .{});
         speed.* *= (1.0 + @as(f128, @floatFromInt(scroll_delta)) / 10.0);
         speed.* = @min(10.0, speed.*);
         speed.* = @max(0.2, speed.*);
@@ -50,19 +52,18 @@ pub fn init() !void {
     try SDLex.fullyInitSDL();
     const display_info = SDL.DisplayMode.getDesktopInfo(0) catch unreachable;
     std.debug.print("screen resolution: {d}, {d}\n", .{ display_info.w, display_info.h });
-    window = SDL.createWindow("Application", .{ .centered = {} }, .{ .centered = {} }, @intCast(display_info.w), @intCast(display_info.h), .{ .vis = .shown, .resizable = false, .borderless = true, .mouse_capture = true }) catch |err| {
-        std.debug.print("Failed to load window! {s}\n", .{@errorName(err)});
-        return err;
-    };
+
+    window = try SDL.createWindow("Application", .{ .centered = {} }, .{ .centered = {} }, @intCast(display_info.w), @intCast(display_info.h), .{ .vis = .shown, .resizable = false, .borderless = true, .mouse_capture = true });
     renderer = try SDL.createRenderer(window, null, .{ .accelerated = true });
     try renderer.setColor(Design.BG_color);
     cam_view = View.init(.{
         .x = 0,
         .y = 0,
-        .width = @divExact(window.getSize().width * 3, 4),
-        .height = window.getSize().height,
+        .width = @intFromFloat(@as(f64, @floatFromInt(display_info.w)) * (1.0 - Design.UI.width_portion)),
+        .height = display_info.h,
     });
-
+    Design.UI.view = View.init(.{ .x = cam_view.port.width, .y = 0, .width = display_info.w - cam_view.port.width, .height = display_info.h });
+    Design.UI.view.cam.x = 0; // not require an offset when drawing ui.
     operation_manager = Operation.Manager.init();
 
     //init fonts
@@ -70,13 +71,15 @@ pub fn init() !void {
     defer gpa.allocator().free(app_dir);
 
     const heap_font_path = try std.fmt.allocPrintZ(gpa.allocator(), "{s}/ioveska.ttf", .{app_dir});
+    defer gpa.allocator().free(heap_font_path);
     Design.heap.font = try SDL.ttf.openFont(heap_font_path, 200);
 
     const UI_font_path = try std.fmt.allocPrintZ(gpa.allocator(), "{s}/ioveska.ttf", .{app_dir});
+    defer gpa.allocator().free(UI_font_path);
     Design.UI.font = try SDL.ttf.openFont(UI_font_path, 200);
 
     //loading screen
-    const loading_surf = try Design.heap.font.renderTextSolid("Loading...", SDL.Color.rgb(255, 255, 255));
+    const loading_surf = try Design.heap.font.renderTextSolid("Loading...", SDL.Color.rgb(150, 150, 150));
     const loading_tex = try SDL.createTextureFromSurface(renderer, loading_surf);
     try renderer.copy(loading_tex, .{ .x = 0, .y = 200, .width = 1000, .height = 600 }, null);
     renderer.present();
@@ -84,9 +87,9 @@ pub fn init() !void {
     //init heap
     heap_internal.initRand();
     try heap_internal.initTextures(renderer);
-    initiallized = true;
-
     try UI.init(renderer);
+
+    initiallized = true;
 }
 
 pub fn start() !void {
@@ -110,11 +113,11 @@ pub fn start() !void {
                         break :mainLoop;
                 },
                 .mouse_wheel => {
-                    if (!scrollForSpeed(&playback_speed, ev.mouse_wheel.delta_y, mouse_pos)) {
+                    if (SDL.c.SDL_PointInRect(@ptrCast(&mouse_pos), @ptrCast(&cam_view.port)) == SDL.c.SDL_TRUE) {
                         const delta: f32 = @floatFromInt(ev.mouse_wheel.delta_y);
                         const zoomed_port = cam_view.getZoomed(1.0 + delta / 8.0, mouse_pos);
                         cam_view.cam = if (!cam_view.offLimits(zoomed_port)) zoomed_port else cam_view.cam;
-                    }
+                    } else _ = scrollForSpeed(&playback_speed, ev.mouse_wheel.delta_y, mouse_pos);
                 },
 
                 .quit => break :mainLoop,
@@ -122,13 +125,18 @@ pub fn start() !void {
             }
         }
 
-        try renderer.setViewport(cam_view.port);
         try renderer.clear();
         heap_internal.draw(renderer, cam_view);
         UI.speed_element.draw(playback_speed);
         if (operation_manager.current_operation) |operation| {
             UI.action_element.draw(operation.data.action);
         }
+        try UI.drawBG();
+        UI.speed_element.draw(playback_speed);
+        if (operation_manager.current_operation) |operation| {
+            UI.action_element.draw(operation.data.action);
+        }
+
         renderer.present();
 
         const sleep_time: i128 = frame_time_nano - (std.time.nanoTimestamp() - start_time);

@@ -21,20 +21,20 @@ pub fn fullyQuitSDL() void {
     SDL.ttf.quit();
     SDL.quit();
 }
-pub fn conertVecSize(original: anytype) if (@TypeOf(original) == Vec2) SDL.Size else Vec2 {
+pub fn conertVecPoint(original: anytype) if (@TypeOf(original) == Vec2) SDL.Point else Vec2 {
     const org_type: type = @TypeOf(original);
     if (org_type == Vec2) {
-        return SDL.Size{
-            .x = @intFromFloat(original.width),
-            .y = @intFromFloat(original.height),
+        return SDL.Point{
+            .x = @intFromFloat(original.x),
+            .y = @intFromFloat(original.y),
         };
-    } else if (org_type == SDL.Size) {
+    } else if (org_type == SDL.Point) {
         return Vec2{
-            .x = @floatFromInt(original.width),
-            .y = @floatFromInt(original.height),
+            .x = @floatFromInt(original.x),
+            .y = @floatFromInt(original.y),
         };
     }
-    @compileError("ConvertSDLRect expects a rect type\n");
+    @compileError("conertVecPoint expects either a point or a vec type\n");
 }
 
 pub fn convertSDLRect(original: anytype) if (@TypeOf(original) == SDL.RectangleF) SDL.Rectangle else SDL.RectangleF {

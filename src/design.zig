@@ -1,4 +1,5 @@
 const SDL = @import("sdl2");
+const View = @import("view.zig").View;
 pub var BG_color: SDL.Color = SDL.Color.rgb(90, 90, 90);
 
 pub const heap = struct {
@@ -30,18 +31,20 @@ pub const heap = struct {
 pub const UI = struct {
     pub var font: SDL.ttf.Font = undefined;
     pub const bg = SDL.Color.black;
+    pub const width_portion = 0.25; // the part of the screen dedicated for the ui
+    pub var view: View = undefined; //defined in app init function based on screen resolution and width_portion
     pub const element = struct {
         rect: SDL.Rectangle,
         fg: SDL.Color,
         bg: SDL.Color,
     };
-    pub const speed = element{
-        .rect = .{ .x = 0, .y = 0, .width = 130, .height = 100 },
+    pub var speed = element{
+        .rect = .{ .x = 0, .y = 0, .width = 250, .height = 100 },
         .fg = SDL.Color.white,
         .bg = SDL.Color.rgba(0, 0, 0, 255),
     };
-    pub const action = element{
-        .rect = .{ .x = 400, .y = 0, .width = 200, .height = 100 },
+    pub var action = element{
+        .rect = .{ .x = 0, .y = 200, .width = 400, .height = 100 },
         .fg = SDL.Color.rgb(200, 200, 0),
         .bg = SDL.Color.rgba(0, 0, 0, 255),
     };
