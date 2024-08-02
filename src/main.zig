@@ -27,7 +27,7 @@ pub fn main() !void {
 }
 //TODO
 //make a desicion about allocator usage
-//optional: make test file for heap
+//add toggle for free cam which will disable zoomanimation
 //make deinit/close functions for app and heap
 //make the init and deinit (^) functions request an allocator (better for testing memory leaks)
 //optional: make a wrapper for the init and deinit functions (^) that already has an allocator.

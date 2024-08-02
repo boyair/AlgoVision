@@ -9,6 +9,7 @@ pub fn init(renderer: SDL.Renderer) !void {
     owner_renderer = renderer;
     try speed_element.updateTexture(1.0);
     try action_element.updateTexture(Action.actions.none);
+    try freecam_element.updateTexture(false);
 }
 fn uiElement(value_type: type, print: fn (buf: []u8, val: value_type) [:0]u8) type {
     return struct {
@@ -37,42 +38,26 @@ fn uiElement(value_type: type, print: fn (buf: []u8, val: value_type) [:0]u8) ty
     };
 }
 
+pub var speed_element = uiElement(f128, printSpeed){ .texture = undefined, .cache = 1.0, .design = &Design.speed };
 fn printSpeed(buf: []u8, speed: f128) [:0]u8 {
     return std.fmt.bufPrintZ(buf, "speed: {d:.2}", .{speed}) catch unreachable;
 }
-pub var speed_element = uiElement(f128, printSpeed){ .texture = undefined, .cache = 1.0, .design = &Design.speed };
 
+pub var action_element = uiElement(Action.actions, printAction){ .texture = undefined, .cache = undefined, .design = &Design.action };
 fn printAction(buf: []u8, action: Action.actions) [:0]u8 {
     return std.fmt.bufPrintZ(buf, "action: {s:<16}", .{@tagName(action)}) catch unreachable;
 }
-
-pub var action_element = uiElement(Action.actions, printAction){ .texture = undefined, .cache = undefined, .design = &Design.action };
-
-//action viewer
-var action_tex: SDL.Texture = undefined;
-var action_cache: Action = .{ .none = {} };
-
-pub fn drawAction(action: Action) !void {
-    if (@intFromEnum(action) != @intFromEnum(action_cache)) {
-        updateTexAction(action) catch {
-            @panic("failed to create texture: action");
-        };
-    }
-    try owner_renderer.copy(action_tex, Design.action.rect, null);
+fn printFreeCam(buf: []u8, on: bool) [:0]u8 {
+    return std.fmt.bufPrintZ(buf, "freecam: {s:<16}", .{if (on) "On" else "Off"}) catch unreachable;
 }
 
-fn updateTexAction(action: Action) !void {
-    var text_buffer: [20]u8 = undefined;
-    const num_str = std.fmt.bufPrintZ(&text_buffer, "{s}", .{@tagName(action)}) catch "???";
-    const surf = Design.font.renderTextBlended(num_str, Design.action.fg) catch handle: {
-        std.debug.print("failed to load surface for texture\npossible used bad font.\n", .{});
-        break :handle SDL.createRgbSurfaceWithFormat(32, 32, SDL.PixelFormatEnum.rgba8888) catch unreachable;
-    };
-    action_tex = try SDL.createTextureFromSurface(owner_renderer, surf);
-    try action_tex.setBlendMode(.blend);
-    surf.destroy();
-}
+pub var freecam_element = uiElement(bool, printFreeCam){ .texture = undefined, .cache = false, .design = &Design.freecam };
 
+//---------------------------------------------------
+//---------------------------------------------------
+//-------------------GENERAL UI----------------------
+//---------------------------------------------------
+//---------------------------------------------------
 pub fn drawBG() !void {
     const last_color = try owner_renderer.getColor();
     try owner_renderer.setColor(SDL.Color.black);

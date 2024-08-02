@@ -131,12 +131,10 @@ pub fn start() !void {
         try renderer.clear();
         heap_internal.draw(renderer, cam_view);
         stack_internal.draw(renderer, cam_view);
-        UI.speed_element.draw(playback_speed);
-        if (operation_manager.current_operation) |operation| {
-            UI.action_element.draw(operation.data.action);
-        }
+
         try UI.drawBG();
         UI.speed_element.draw(playback_speed);
+        UI.freecam_element.draw(false);
         if (operation_manager.current_operation) |operation| {
             UI.action_element.draw(operation.data.action);
         }

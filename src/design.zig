@@ -54,6 +54,11 @@ pub const UI = struct {
         .fg = SDL.Color.rgb(200, 200, 0),
         .bg = SDL.Color.rgba(0, 0, 0, 255),
     };
+    pub var freecam = element{
+        .rect = .{ .x = 0, .y = 400, .width = 400, .height = 100 },
+        .fg = SDL.Color.cyan,
+        .bg = SDL.Color.rgba(0, 0, 0, 255),
+    };
 };
 
 pub const stack = struct {
@@ -61,7 +66,8 @@ pub const stack = struct {
     pub var font: SDL.ttf.Font = undefined;
     pub const position: SDL.Point = .{ .x = -2000, .y = 2000 };
     pub const method = struct {
-        pub const fg: SDL.Color = SDL.Color.black;
+        pub const fg: SDL.Color = SDL.Color.red;
+        //defined in stack init function. . .
         pub var bg: SDL.Texture = undefined;
         pub const size: SDL.Size = .{ .width = 1000, .height = 500 };
     };
