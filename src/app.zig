@@ -3,16 +3,20 @@ const SDL = @import("sdl2");
 const SDLex = @import("SDLex.zig");
 const Vec2 = @import("Vec2.zig").Vec2;
 const View = @import("view.zig").View;
-const heap_internal = @import("heap/internal.zig");
 pub const heap = @import("heap/interface.zig");
+const heap_internal = @import("heap/internal.zig");
+pub const stack = @import("stack/interface.zig");
+pub const stack_internal = @import("stack/internal.zig");
 const Design = @import("design.zig");
 const Operation = @import("operation.zig");
 const Animation = @import("animation.zig");
 const UI = @import("UI.zig");
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+//arena allocator for all the internal allocation of the application
 pub var Allocator = std.heap.ArenaAllocator.init(gpa.allocator());
+pub var exe_path: []u8 = undefined;
 
-const fps = 2000;
+const fps = 144;
 const frame_time_nano = 1_000_000_000 / fps;
 
 const State = enum {
@@ -30,6 +34,7 @@ var running_time: i128 = 0;
 
 var playback_speed: f128 = 1;
 
+//TODO: move this function to a more apropriate file
 pub fn scrollForSpeed(speed: *f128, scroll_delta: i32, mouse_pos: SDL.Point) bool {
     const converted_rect = SDLex.convertSDLRect(Design.UI.view.convert(SDLex.convertSDLRect(Design.UI.speed.rect)) catch return false);
     if (SDL.c.SDL_PointInRect(@ptrCast(&mouse_pos), @ptrCast(&converted_rect)) == SDL.c.SDL_TRUE) {
@@ -67,28 +72,26 @@ pub fn init() !void {
     operation_manager = Operation.Manager.init();
 
     //init fonts
-    const app_dir = try std.fs.selfExeDirPathAlloc(gpa.allocator());
-    defer gpa.allocator().free(app_dir);
+    exe_path = try std.fs.selfExeDirPathAlloc(gpa.allocator());
 
-    const heap_font_path = try std.fmt.allocPrintZ(gpa.allocator(), "{s}/ioveska.ttf", .{app_dir});
-    defer gpa.allocator().free(heap_font_path);
-    Design.heap.font = try SDL.ttf.openFont(heap_font_path, 200);
-
-    const UI_font_path = try std.fmt.allocPrintZ(gpa.allocator(), "{s}/ioveska.ttf", .{app_dir});
+    const UI_font_path = try std.fmt.allocPrintZ(gpa.allocator(), "{s}/ioveska.ttf", .{exe_path});
     defer gpa.allocator().free(UI_font_path);
-    Design.UI.font = try SDL.ttf.openFont(UI_font_path, 200);
+    Design.UI.font = try SDL.ttf.openFont(UI_font_path, 150);
 
     //loading screen
-    const loading_surf = try Design.heap.font.renderTextSolid("Loading...", SDL.Color.rgb(150, 150, 150));
+    const loading_surf = try Design.UI.font.renderTextSolid("Loading...", SDL.Color.rgb(150, 150, 150));
     const loading_tex = try SDL.createTextureFromSurface(renderer, loading_surf);
     try renderer.copy(loading_tex, .{ .x = 0, .y = 200, .width = 1000, .height = 600 }, null);
     renderer.present();
 
     //init heap
-    heap_internal.initRand();
-    try heap_internal.initTextures(renderer);
+    heap_internal.init(renderer);
+
+    //init UI
     try UI.init(renderer);
 
+    //init stack
+    try stack_internal.init();
     initiallized = true;
 }
 
@@ -127,6 +130,7 @@ pub fn start() !void {
 
         try renderer.clear();
         heap_internal.draw(renderer, cam_view);
+        stack_internal.draw(renderer, cam_view);
         UI.speed_element.draw(playback_speed);
         if (operation_manager.current_operation) |operation| {
             UI.action_element.draw(operation.data.action);
@@ -149,9 +153,14 @@ pub fn start() !void {
     }
 }
 
+//---------------------------------------------------
+//---------------------------------------------------
+//-----------------APP INTERFACE---------------------
+//---------------------------------------------------
+//---------------------------------------------------
 pub fn log(comptime str: []const u8, args: anytype) void {
     const string = std.fmt.allocPrint(Allocator.allocator(), str, args) catch unreachable;
     var non_animation: Animation.ZoomAnimation = Animation.ZoomAnimation.init(&cam_view, null, .{ .x = 0, .y = 0, .width = 0, .height = 0 }, 0);
     non_animation.done = true;
-    operation_manager.push(.{ .action = .{ .print = string }, .animation = non_animation, .pause_time_nano = 0 });
+    operation_manager.push(Allocator.allocator(), .{ .action = .{ .print = string }, .animation = non_animation, .pause_time_nano = 0 });
 }

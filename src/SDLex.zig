@@ -21,6 +21,42 @@ pub fn fullyQuitSDL() void {
     SDL.ttf.quit();
     SDL.quit();
 }
+
+//TODO: make a function called loadResource that takes in just a path and based on
+//the ending, infers the type of the file loaded (ttf, png, wav later) and returns the ressource
+//also make a function to destroy a resource based on type.
+//**seperate exe path and relative path arguments because exe path cant be comptime**
+
+pub fn alignedRect(rect: anytype, alignment: Vec2, size: anytype) @TypeOf(rect) {
+    if (@TypeOf(rect) == SDL.Rectangle) {
+        if (@TypeOf(size) != SDL.Size)
+            @compileError("size type for SDL Rectangle must be SDL Size.");
+        return SDL.Rectangle{
+            .x = rect.x + @as(c_int, @intFromFloat(@as(f32, @floatFromInt(rect.width)) * alignment.x)) - @divExact(size.width, 2),
+            .y = rect.y + @as(c_int, @intFromFloat(@as(f32, @floatFromInt(rect.height)) * alignment.y)) - @divExact(size.height, 2),
+            .width = size.width,
+            .height = size.height,
+        };
+    } else if (@TypeOf(rect) == SDL.RectangleF) {
+        if (@TypeOf(size) != Vec2)
+            @compileError("size type for SDL RectangleF must be Vec2.");
+        return SDL.RectangleF{
+            .x = rect.x + (rect.width * alignment.x) - (size.x / 2.0),
+            .y = rect.y + (rect.height * alignment.y) - (size.y / 2.0),
+            .width = size.x,
+            .height = size.y,
+        };
+    }
+    @compileError("a rectangle type must be passed for the rect argument");
+}
+
+pub inline fn textureFromText(text: [:0]u8, font: SDL.ttf.Font, color: SDL.Color, renderer: SDL.Renderer) SDL.Texture {
+    const surf = font.renderTextBlended(text, color) catch {
+        @panic("failed to load surface from font\nmight be caused by font error font.\n");
+    };
+    return SDL.createTextureFromSurface(renderer, surf) catch unreachable;
+}
+
 pub fn conertVecPoint(original: anytype) if (@TypeOf(original) == Vec2) SDL.Point else Vec2 {
     const org_type: type = @TypeOf(original);
     if (org_type == Vec2) {

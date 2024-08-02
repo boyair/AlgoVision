@@ -10,17 +10,28 @@ const heap = app.heap;
 const Operation = @import("operation.zig");
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 
+fn factorial(num: []i64) i64 {
+    if (num[0] <= 1)
+        return 1;
+
+    var next_call: [1]i64 = .{num[0] - 1};
+    const recursion = app.stack.call(factorial, &next_call);
+    return recursion * num[0];
+}
+
 pub fn main() !void {
     try app.init();
-    const mem = heap.allocate(gpa.allocator(), 4);
-    for (mem) |idx| {
-        heap.set(idx, 69);
-    }
-    heap.free(gpa.allocator(), mem);
+    var num: [1]i64 = .{7};
+    app.log("fib of {d} is {d}", .{ num[0], app.stack.call(factorial, &num) });
     try app.start();
 }
 //TODO
-//start making the stack
-//make test file for heap
+//make a desicion about allocator usage
+//optional: make test file for heap
 //make deinit/close functions for app and heap
+//make the init and deinit (^) functions request an allocator (better for testing memory leaks)
+//optional: make a wrapper for the init and deinit functions (^) that already has an allocator.
 //optional: make allocation, search and free a single action.
+//start working on sound
+//move logic to another thread to avoid framerate limitation (have a tickrate sepertae from framerate)
+//

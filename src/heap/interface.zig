@@ -9,6 +9,7 @@ const design = @import("../design.zig").heap;
 const Vec2 = @import("../Vec2.zig").Vec2;
 const ZoomAnimation = @import("../animation.zig").ZoomAnimation;
 
+//calculates camera rect to view a block on the heap
 fn blockView(idx: usize) SDL.RectangleF {
     var block_view = Internals.blockRect(idx);
     block_view.x -= design.block.full_size.width * 4;
@@ -18,6 +19,7 @@ fn blockView(idx: usize) SDL.RectangleF {
     return block_view;
 }
 
+//calculates camera rect to view a range on the heap
 fn rangeView(start: usize, end: usize) !SDL.RectangleF {
     const start_rect: SDL.RectangleF = Internals.blockRect(start);
     var min_x = start_rect.x;
@@ -57,7 +59,7 @@ pub fn set(idx: usize, value: i64) void {
     const operation: Operation.Operation = .{ .animation = animation, .action = .{ .set_value_heap = .{ .idx = idx, .value = value } }, .pause_time_nano = 200_000_000 };
     Internals.mem_runtime[idx].val = value;
 
-    app.operation_manager.push(operation);
+    app.operation_manager.push(app.Allocator.allocator(), operation);
 }
 
 pub fn get(idx: usize) i64 {
@@ -84,18 +86,18 @@ pub fn allocate(allocator: std.mem.Allocator, size: usize) []usize {
         const block_view = blockView(idx);
         const animation = ZoomAnimation.init(&app.cam_view, null, block_view, 200_000_000);
         const operation: Operation.Operation = .{ .animation = animation, .action = .{ .search = {} }, .pause_time_nano = 200_000_000 };
-        app.operation_manager.push(operation);
+        app.operation_manager.push(app.Allocator.allocator(), operation);
     }
-    var indexes = std.ArrayList(usize).init(allocator);
+    var indices = std.ArrayList(usize).init(allocator);
     for (range.start..range.end) |idx| {
         Internals.mem_runtime[idx].owner = .user;
-        indexes.append(idx) catch unreachable;
+        indices.append(idx) catch unreachable;
         const range_view = rangeView(range.start, idx + 1) catch unreachable;
         const animation = ZoomAnimation.init(&app.cam_view, null, range_view, 200_000_000);
         const operation: Operation.Operation = .{ .animation = animation, .action = .{ .allocate = idx }, .pause_time_nano = 200_000_000 };
-        app.operation_manager.push(operation);
+        app.operation_manager.push(app.Allocator.allocator(), operation);
     }
-    return indexes.toOwnedSlice() catch unreachable;
+    return indices.toOwnedSlice() catch unreachable;
 }
 
 pub fn free(allocator: std.mem.Allocator, indices: []usize) void {
@@ -104,7 +106,7 @@ pub fn free(allocator: std.mem.Allocator, indices: []usize) void {
             Internals.mem_runtime[idx].owner = .free;
             const animation = ZoomAnimation.init(&app.cam_view, null, blockView(idx), 200_000_000);
             const operation: Operation.Operation = .{ .animation = animation, .action = .{ .free = idx }, .pause_time_nano = 200_000_000 };
-            app.operation_manager.push(operation);
+            app.operation_manager.push(app.Allocator.allocator(), operation);
         } else @panic("failed to free memory: not allocated");
     }
     allocator.free(indices);

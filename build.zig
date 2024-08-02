@@ -63,6 +63,7 @@ pub fn build(b: *std.Build) void {
     } else {
         sdk.link(exe, .static, .SDL2); // link SDL2 as a static library
         sdk.link(exe, .static, .SDL2_ttf); // link SDL2_ttf as a static library
+        exe.linkSystemLibrary("SDL2_image");
     }
     b.installArtifact(exe);
 

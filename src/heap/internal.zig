@@ -1,11 +1,11 @@
 const std = @import("std");
 const SDL = @import("sdl2");
+const app = @import("../app.zig");
 const View = @import("../view.zig").View;
 const Operation = @import("../operation.zig");
 const SDLex = @import("../SDLex.zig");
 const design = @import("../design.zig").heap;
 const ZoomAnimation = @import("../animation.zig").ZoomAnimation;
-pub var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 pub const rows = 50;
 pub const columns = 50;
 const Ownership = enum(u8) {
@@ -42,6 +42,20 @@ const HeapError = error{
 pub var mem: [rows * columns]block = undefined;
 // a copy that is nodified on fuction calls from the user instead of by operation
 pub var mem_runtime: [rows * columns]block = undefined;
+var batches_to_update: std.AutoHashMap(idx2D, void) = undefined;
+
+pub fn init(renderer: SDL.Renderer) void {
+    const heap_font_path = std.fmt.allocPrintZ(app.Allocator.allocator(), "{s}/ioveska.ttf", .{app.exe_path}) catch unreachable;
+    defer app.Allocator.allocator().free(heap_font_path);
+    design.font = SDL.ttf.openFont(heap_font_path, 150) catch {
+        @panic("failed to load font!");
+    };
+    initRand();
+    initTextures(renderer) catch {
+        @panic("failed to initiallize textures for the heap!");
+    };
+    batches_to_update = std.AutoHashMap(idx2D, void).init(app.Allocator.allocator());
+}
 
 //initiallize heap with random values in range 0 - 999;
 pub fn initRand() void {
@@ -84,14 +98,12 @@ fn initAvailability() void {
 
 const batch_size: SDL.Size = .{ .width = std.math.sqrt(rows), .height = std.math.sqrt(columns) };
 pub var batch_tex: [rows / batch_size.width + 1][columns / batch_size.height + 1]SDL.Texture = undefined; // textures of the numbers batched for performance
-var batches_to_update: std.AutoHashMap(idx2D, void) = undefined;
 pub fn initTextures(renderer: SDL.Renderer) !void {
     for (0..batch_tex.len) |row| {
         for (0..batch_tex[0].len) |column| {
             try initBatch(.{ .y = row, .x = column }, renderer);
         }
     }
-    batches_to_update = std.AutoHashMap(idx2D, void).init(gpa.allocator());
 }
 
 fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
@@ -132,6 +144,7 @@ fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
                 .user => design.block.user.bg,
             };
 
+            //TODO: change this section to call SDLex.textureFromText instead
             surf = design.font.renderTextBlended(num_str, color_fg) catch handle: {
                 std.debug.print("failed to load surface for texture\nmight be caused by font error font.\n", .{});
                 break :handle try SDL.createRgbSurfaceWithFormat(32, 32, SDL.PixelFormatEnum.rgba8888);
@@ -265,6 +278,7 @@ pub fn set(idx: usize, value: i64, renderer: SDL.Renderer) !void {
     try batches_to_update.put(owning_batch, {});
     try initBatch(owning_batch, renderer);
 }
+
 pub fn allocate(idx: usize) HeapError!void {
     if (mem[idx].owner != Ownership.free) {
         return HeapError.MemoryNotAvailable;

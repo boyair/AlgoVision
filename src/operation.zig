@@ -1,5 +1,6 @@
 const std = @import("std");
 const SDL = @import("sdl2");
+const SDLex = @import("SDLex.zig");
 const design = @import("design.zig");
 pub const Action = @import("action.zig");
 const app = @import("app.zig");
@@ -44,8 +45,8 @@ pub const Manager = struct {
         };
     }
 
-    pub fn push(self: *Manager, operation: Operation) void {
-        const node = app.Allocator.allocator().create(std.DoublyLinkedList(Operation).Node) catch {
+    pub fn push(self: *Manager, allocator: std.mem.Allocator, operation: Operation) void {
+        const node = allocator.create(std.DoublyLinkedList(Operation).Node) catch {
             @panic("could not allocate memory for operation.");
         };
 
@@ -79,7 +80,6 @@ pub const Manager = struct {
                         .data = Action.perform(current_operation.data.action), //action performed here.
                     };
                     self.undo_queue.append(undo_node);
-                    std.debug.print("pushed\noperation: {s}\nsize: {d}\n\n", .{ @tagName(undo_node.data), self.undo_queue.len });
                 },
                 .pause => {
                     self.time_paused += delta_time;
@@ -91,7 +91,7 @@ pub const Manager = struct {
                     if (current_operation == self.operation_queue.last) {
                         return;
                     }
-                    const current_view = current_operation.data.animation.end_state;
+                    const current_view = app.cam_view.cam;
                     self.animation_state = if (current_operation.next) |nxt| nxt.data.animation else Animation.ZoomAnimation.init(self.animation_state.view, current_view, current_view, 0);
                     self.animation_state.start_state = current_view;
                     self.time_paused = 0;
@@ -143,7 +143,6 @@ pub const Manager = struct {
                 .data = Action.perform(self.current_operation.?.data.action), //action performed here.
             };
             self.undo_queue.append(undo_node);
-            std.debug.print("pushed\noperation: {s}\nsize: {d}\n\n", .{ @tagName(undo_node.data), self.undo_queue.len });
         }
         self.state = .done;
     }
