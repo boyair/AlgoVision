@@ -26,12 +26,12 @@ pub fn call(function: *const fn (args: []i64) i64, args: []i64) i64 {
     //make animation (empty for now)
     std.debug.print("size: {d}\n", .{stack_len_runtime});
 
-    const call_animation: ZoomAnimation = ZoomAnimation.init(&app.cam_view, null, topMethodView(stack_len_runtime), 200_000_000);
+    const call_animation: ZoomAnimation = ZoomAnimation.init(&app.cam_view, null, topMethodView(stack_len_runtime), 500_000_000);
     //copy args to a list
     var args_list = std.ArrayList(i64).init(app.Allocator.allocator());
     args_list.appendSlice(args) catch unreachable;
     //push call operation
-    const call_operation: Operation.Operation = .{ .action = .{ .call = .{ .function = function, .args = args_list } }, .animation = call_animation, .pause_time_nano = 0 };
+    const call_operation: Operation.Operation = .{ .action = .{ .call = .{ .function = function, .args = args_list } }, .animation = call_animation, .pause_time_nano = 400_000_000 };
     app.operation_manager.push(app.Allocator.allocator(), call_operation);
     //NOTE:
     //important to call only after pushing call
@@ -45,9 +45,9 @@ pub fn call(function: *const fn (args: []i64) i64, args: []i64) i64 {
     const eval_operation: Operation.Operation = .{ .action = .{ .eval_function = eval }, .animation = eval_animation, .pause_time_nano = 1_000_000_000 };
     app.operation_manager.push(app.Allocator.allocator(), eval_operation);
 
-    var non_animation: ZoomAnimation = ZoomAnimation.init(&app.cam_view, null, .{ .x = 0, .y = 0, .width = 0, .height = 0 }, 0);
-    non_animation.done = true;
-    const pop: Operation.Operation = .{ .action = .{ .stack_pop = {} }, .animation = non_animation, .pause_time_nano = 100_000_000 };
+    const pop_animation: ZoomAnimation = ZoomAnimation.init(&app.cam_view, null, topMethodView(stack_len_runtime), 500_000_000);
+    //non_animation.done = true;
+    const pop: Operation.Operation = .{ .action = .{ .stack_pop = {} }, .animation = pop_animation, .pause_time_nano = 500_000_000 };
     app.operation_manager.push(app.Allocator.allocator(), pop);
 
     return eval;

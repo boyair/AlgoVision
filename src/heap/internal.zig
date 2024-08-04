@@ -3,6 +3,7 @@ const SDL = @import("sdl2");
 const app = @import("../app.zig");
 const View = @import("../view.zig").View;
 const Operation = @import("../operation.zig");
+const Vec2 = @import("../Vec2.zig").Vec2;
 const SDLex = @import("../SDLex.zig");
 const design = @import("../design.zig").heap;
 const ZoomAnimation = @import("../animation.zig").ZoomAnimation;
@@ -45,9 +46,7 @@ pub var mem_runtime: [rows * columns]block = undefined;
 var batches_to_update: std.AutoHashMap(idx2D, void) = undefined;
 
 pub fn init(renderer: SDL.Renderer) void {
-    const heap_font_path = std.fmt.allocPrintZ(app.Allocator.allocator(), "{s}/ioveska.ttf", .{app.exe_path}) catch unreachable;
-    defer app.Allocator.allocator().free(heap_font_path);
-    design.font = SDL.ttf.openFont(heap_font_path, 150) catch {
+    design.font = SDLex.loadResource(app.exe_path, "/ioveska.ttf", app.renderer) catch {
         @panic("failed to load font!");
     };
     initRand();
@@ -108,7 +107,6 @@ pub fn initTextures(renderer: SDL.Renderer) !void {
 
 fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
     //make buffers for texture creation.
-    var surf: SDL.Surface = undefined;
     var text_buffer: [12]u8 = undefined;
 
     //initiallize texture to draw on
@@ -145,11 +143,8 @@ fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
             };
 
             //TODO: change this section to call SDLex.textureFromText instead
-            surf = design.font.renderTextBlended(num_str, color_fg) catch handle: {
-                std.debug.print("failed to load surface for texture\nmight be caused by font error font.\n", .{});
-                break :handle try SDL.createRgbSurfaceWithFormat(32, 32, SDL.PixelFormatEnum.rgba8888);
-            };
-            const texture = try SDL.createTextureFromSurface(renderer, surf);
+
+            const texture = SDLex.textureFromText(num_str, design.font, color_fg, renderer);
             var block_rect = SDLex.convertSDLRect(blockRect(idx1));
             block_rect.x -= @as(c_int, @intCast(index.x * batch_size.width * design.block.full_size.width)) + design.position.x;
             block_rect.y -= @as(c_int, @intCast(index.y * batch_size.height * design.block.full_size.height)) + design.position.y;
@@ -162,7 +157,6 @@ fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
             block_rect.height = design.block.size.height;
 
             try renderer.copy(texture, block_rect, null);
-            surf.destroy();
             texture.destroy();
         }
     }
@@ -348,6 +342,14 @@ pub fn blockRect(block_idx: usize) SDL.RectangleF {
         .height = @intCast(design.block.full_size.height),
     };
     return SDLex.convertSDLRect(rect);
+}
+pub fn blockCenter(block_idx: usize) Vec2 {
+    const idx_2d = idx2D.init(block_idx, columns);
+    const point = SDL.Point{
+        .x = @intCast(design.position.x + @as(c_int, @intCast(idx_2d.x)) * design.block.full_size.width + design.block.full_size.width / 2),
+        .y = @intCast(design.position.y + @as(c_int, @intCast(idx_2d.y)) * design.block.full_size.height + design.block.full_size.height / 2),
+    };
+    return SDLex.conertVecPoint(point);
 }
 
 //---------------------------------------------------

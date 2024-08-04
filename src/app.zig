@@ -33,19 +33,10 @@ var state: State = State.heap;
 var running_time: i128 = 0;
 
 var playback_speed: f128 = 1;
+var paused = false;
+var freecam = false;
 
 //TODO: move this function to a more apropriate file
-pub fn scrollForSpeed(speed: *f128, scroll_delta: i32, mouse_pos: SDL.Point) bool {
-    const converted_rect = SDLex.convertSDLRect(Design.UI.view.convert(SDLex.convertSDLRect(Design.UI.speed.rect)) catch return false);
-    if (SDL.c.SDL_PointInRect(@ptrCast(&mouse_pos), @ptrCast(&converted_rect)) == SDL.c.SDL_TRUE) {
-        std.debug.print("True", .{});
-        speed.* *= (1.0 + @as(f128, @floatFromInt(scroll_delta)) / 10.0);
-        speed.* = @min(10.0, speed.*);
-        speed.* = @max(0.2, speed.*);
-        return true;
-    }
-    return false;
-}
 
 pub fn init() !void {
     if (initiallized) {
@@ -100,27 +91,38 @@ pub fn start() !void {
     mainLoop: while (true) {
         const start_time = std.time.nanoTimestamp();
         last_iteration_time = @intFromFloat(@as(f128, @floatFromInt(last_iteration_time)) * playback_speed);
-        operation_manager.update(last_iteration_time);
+        operation_manager.update(if (paused) 0 else last_iteration_time);
         const mouse_state = SDL.getMouseState();
         const mouse_pos: SDL.Point = .{ .x = mouse_state.x, .y = mouse_state.y };
         while (SDL.pollEvent()) |ev| {
+            if (SDL.c.SDL_PointInRect(@ptrCast(&mouse_pos), @ptrCast(&Design.UI.freecam.rect)) == SDL.c.SDL_TRUE) {
+                std.debug.print("flip\n", .{});
+            }
             switch (ev) {
                 .key_down => {
-                    if (ev.key_down.scancode == .left) {
+                    if (ev.key_down.scancode == .left)
                         operation_manager.undoLast();
-                    }
-                    if (ev.key_down.scancode == .right) {
+                    if (ev.key_down.scancode == .right)
                         operation_manager.fastForward();
-                    }
                     if (ev.key_down.scancode == .escape)
                         break :mainLoop;
+                    if (ev.key_down.scancode == .space)
+                        paused = !paused;
+                },
+                .mouse_button_down => {
+                    if (ev.mouse_button_down.button == .left) {
+                        const mouse_on_ui = UI.relativePoint(mouse_pos);
+                        if (SDL.c.SDL_PointInRect(@ptrCast(&mouse_on_ui), @ptrCast(&Design.UI.freecam.rect)) == SDL.c.SDL_TRUE) {
+                            freecam = !freecam;
+                        }
+                    }
                 },
                 .mouse_wheel => {
                     if (SDL.c.SDL_PointInRect(@ptrCast(&mouse_pos), @ptrCast(&cam_view.port)) == SDL.c.SDL_TRUE) {
                         const delta: f32 = @floatFromInt(ev.mouse_wheel.delta_y);
                         const zoomed_port = cam_view.getZoomed(1.0 + delta / 8.0, mouse_pos);
                         cam_view.cam = if (!cam_view.offLimits(zoomed_port)) zoomed_port else cam_view.cam;
-                    } else _ = scrollForSpeed(&playback_speed, ev.mouse_wheel.delta_y, mouse_pos);
+                    } else _ = UI.scrollForSpeed(&playback_speed, ev.mouse_wheel.delta_y, mouse_pos);
                 },
 
                 .quit => break :mainLoop,
@@ -134,7 +136,7 @@ pub fn start() !void {
 
         try UI.drawBG();
         UI.speed_element.draw(playback_speed);
-        UI.freecam_element.draw(false);
+        UI.freecam_element.draw(freecam);
         if (operation_manager.current_operation) |operation| {
             UI.action_element.draw(operation.data.action);
         }

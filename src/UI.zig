@@ -42,6 +42,16 @@ pub var speed_element = uiElement(f128, printSpeed){ .texture = undefined, .cach
 fn printSpeed(buf: []u8, speed: f128) [:0]u8 {
     return std.fmt.bufPrintZ(buf, "speed: {d:.2}", .{speed}) catch unreachable;
 }
+pub fn scrollForSpeed(speed: *f128, scroll_delta: i32, mouse_pos: SDL.Point) bool {
+    const converted_rect = SDLex.convertSDLRect(Design.view.convert(SDLex.convertSDLRect(Design.speed.rect)) catch return false);
+    if (SDL.c.SDL_PointInRect(@ptrCast(&mouse_pos), @ptrCast(&converted_rect)) == SDL.c.SDL_TRUE) {
+        speed.* *= (1.0 + @as(f128, @floatFromInt(scroll_delta)) / 10.0);
+        speed.* = @min(10.0, speed.*);
+        speed.* = @max(0.2, speed.*);
+        return true;
+    }
+    return false;
+}
 
 pub var action_element = uiElement(Action.actions, printAction){ .texture = undefined, .cache = undefined, .design = &Design.action };
 fn printAction(buf: []u8, action: Action.actions) [:0]u8 {
@@ -64,4 +74,8 @@ pub fn drawBG() !void {
 
     try owner_renderer.fillRect(Design.view.port);
     try owner_renderer.setColor(last_color);
+}
+
+pub fn relativePoint(point: SDL.Point) SDL.Point {
+    return SDL.Point{ .x = point.x - Design.view.port.x, .y = point.y - Design.view.port.y };
 }

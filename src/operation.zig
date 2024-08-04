@@ -125,7 +125,8 @@ pub const Manager = struct {
     fn resetState(self: *Manager) void {
         if (self.current_operation == null)
             return;
-        const current_view = if (self.current_operation.?.prev) |prev| prev.data.animation.end_state else self.current_operation.?.data.animation.end_state;
+        const current_view =
+            if (self.current_operation.?.prev) |prev| prev.data.animation.end_state else self.current_operation.?.data.animation.end_state;
         self.animation_state = self.current_operation.?.data.animation;
         self.state = OperationState.animate;
         self.animation_state.start_state = current_view;

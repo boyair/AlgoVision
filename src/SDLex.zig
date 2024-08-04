@@ -2,6 +2,7 @@ const dprint = @import("std").debug.print;
 const SDL = @import("sdl2");
 const Vec2 = @import("Vec2.zig").Vec2;
 const os = @import("builtin").os;
+const std = @import("std");
 
 pub fn fullyInitSDL() !void {
 
@@ -22,10 +23,41 @@ pub fn fullyQuitSDL() void {
     SDL.quit();
 }
 
-//TODO: make a function called loadResource that takes in just a path and based on
-//the ending, infers the type of the file loaded (ttf, png, wav later) and returns the ressource
-//also make a function to destroy a resource based on type.
-//**seperate exe path and relative path arguments because exe path cant be comptime**
+pub fn loadResource(exe_path: []const u8, comptime relative_path: []const u8, renderer: ?SDL.Renderer) !resourceType(relative_path) {
+    var full_path_buf: [120]u8 = undefined;
+    const full_path = std.fmt.bufPrintZ(&full_path_buf, "{s}{s}", .{ exe_path, relative_path }) catch unreachable;
+    switch (resourceType(relative_path)) {
+        SDL.Texture => {
+            return SDL.image.loadTexture(renderer.?, full_path);
+        },
+        SDL.ttf.Font => {
+            return SDL.ttf.openFont(full_path, 150);
+        },
+        SDL.Wav => {
+            return SDL.loadWav(full_path);
+        },
+        else => {
+            @compileLog("got unknown resource type");
+        },
+    }
+}
+
+fn resourceType(comptime path: []const u8) type {
+    if (path.len < 4)
+        @compileError("resource path too short to exist");
+
+    const format = path[(path.len - 4)..]; // last 4 characters
+    if (std.mem.eql(u8, format, ".png")) {
+        return SDL.Texture;
+    } else if (std.mem.eql(u8, format, ".ttf")) {
+        return SDL.ttf.Font;
+    } else if (std.mem.eql(u8, format, ".wav")) {
+        return SDL.Wav;
+    }
+    @compileLog(format);
+
+    @compileError("tried to load an unknown resource!");
+}
 
 pub fn alignedRect(rect: anytype, alignment: Vec2, size: anytype) @TypeOf(rect) {
     if (@TypeOf(rect) == SDL.Rectangle) {
@@ -50,7 +82,7 @@ pub fn alignedRect(rect: anytype, alignment: Vec2, size: anytype) @TypeOf(rect) 
     @compileError("a rectangle type must be passed for the rect argument");
 }
 
-pub inline fn textureFromText(text: [:0]u8, font: SDL.ttf.Font, color: SDL.Color, renderer: SDL.Renderer) SDL.Texture {
+pub inline fn textureFromText(text: [:0]const u8, font: SDL.ttf.Font, color: SDL.Color, renderer: SDL.Renderer) SDL.Texture {
     const surf = font.renderTextBlended(text, color) catch {
         @panic("failed to load surface from font\nmight be caused by font error font.\n");
     };

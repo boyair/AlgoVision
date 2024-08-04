@@ -21,8 +21,10 @@ fn factorial(num: []i64) i64 {
 
 pub fn main() !void {
     try app.init();
-    var num: [1]i64 = .{7};
-    app.log("fib of {d} is {d}", .{ num[0], app.stack.call(factorial, &num) });
+    // var num: [1]i64 = .{7};
+    // app.log("fib of {d} is {d}", .{ num[0], app.stack.call(factorial, &num) });
+    const mem = heap.allocate(gpa.allocator(), 5);
+    heap.set(mem[4], 3);
     try app.start();
 }
 //TODO

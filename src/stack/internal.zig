@@ -10,12 +10,8 @@ pub var top_eval: ?i64 = null;
 
 pub fn init() !void {
     stack = std.DoublyLinkedList(Method){};
-    const stack_font_path = try std.fmt.allocPrintZ(app.Allocator.allocator(), "{s}/ioveska.ttf", .{app.exe_path});
-    defer app.Allocator.allocator().free(stack_font_path);
-    design.font = try SDL.ttf.openFont(stack_font_path, 150);
-    const texture_path = try std.fmt.allocPrintZ(app.Allocator.allocator(), "{s}/textures/method.png", .{app.exe_path});
-    defer app.Allocator.allocator().free(texture_path);
-    design.method.bg = try SDL.image.loadTexture(app.renderer, texture_path);
+    design.font = try SDLex.loadResource(app.exe_path, "/ioveska.ttf", app.renderer);
+    design.method.bg = try SDLex.loadResource(app.exe_path, "/textures/method.png", app.renderer);
 }
 
 pub const Method = struct {
@@ -35,7 +31,8 @@ pub const Method = struct {
             prev_tex.destroy();
         }
 
-        const text = if (top_eval) |eval| std.fmt.allocPrintZ(app.Allocator.allocator(), "{d}", .{eval}) catch unreachable else self.fmtZ(app.Allocator.allocator());
+        const text =
+            if (top_eval) |eval| std.fmt.allocPrintZ(app.Allocator.allocator(), "{d}", .{eval}) catch unreachable else self.fmtZ(app.Allocator.allocator());
         defer app.Allocator.allocator().free(text);
         const design_texture_info = design.method.bg.query() catch unreachable;
         const texture_rect: SDL.Rectangle = .{ .x = 0, .y = 0, .width = @intCast(design_texture_info.width), .height = @intCast(design_texture_info.height) };
