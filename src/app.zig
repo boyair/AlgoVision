@@ -76,7 +76,7 @@ pub fn init() !void {
     renderer.present();
 
     //init heap
-    heap_internal.init(renderer);
+    heap_internal.init(renderer, Allocator.allocator());
 
     //init UI
     try UI.init(renderer);

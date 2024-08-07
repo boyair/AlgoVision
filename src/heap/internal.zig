@@ -45,7 +45,7 @@ pub var mem: [rows * columns]block = undefined;
 pub var mem_runtime: [rows * columns]block = undefined;
 var batches_to_update: std.AutoHashMap(idx2D, void) = undefined;
 
-pub fn init(renderer: SDL.Renderer) void {
+pub fn init(renderer: SDL.Renderer, allocator: std.mem.Allocator) void {
     design.font = SDLex.loadResource(app.exe_path, "/ioveska.ttf", app.renderer) catch {
         @panic("failed to load font!");
     };
@@ -53,7 +53,7 @@ pub fn init(renderer: SDL.Renderer) void {
     initTextures(renderer) catch {
         @panic("failed to initiallize textures for the heap!");
     };
-    batches_to_update = std.AutoHashMap(idx2D, void).init(app.Allocator.allocator());
+    batches_to_update = std.AutoHashMap(idx2D, void).init(allocator);
 }
 
 //initiallize heap with random values in range 0 - 999;

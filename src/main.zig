@@ -21,14 +21,13 @@ fn factorial(num: []i64) i64 {
 
 pub fn main() !void {
     try app.init();
-    // var num: [1]i64 = .{7};
-    // app.log("fib of {d} is {d}", .{ num[0], app.stack.call(factorial, &num) });
-    const mem = heap.allocate(gpa.allocator(), 5);
-    heap.set(mem[4], 3);
+    var num: [1]i64 = .{7};
+    app.log("fib of {d} is {d}", .{ num[0], app.stack.call(factorial, &num) });
+    //const mem = heap.allocate(gpa.allocator(), 5);
+    //heap.set(mem[4], 3);
     try app.start();
 }
 //TODO
-//make a desicion about allocator usage
 //add toggle for free cam which will disable zoomanimation
 //make deinit/close functions for app and heap
 //make the init and deinit (^) functions request an allocator (better for testing memory leaks)

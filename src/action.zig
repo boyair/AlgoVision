@@ -15,6 +15,7 @@ pub const actions = enum(u8) {
     eval_function,
     forget_eval,
     stack_pop,
+    stack_unpop,
     none,
 };
 pub const Action = union(actions) {
@@ -27,6 +28,7 @@ pub const Action = union(actions) {
     eval_function: i64,
     forget_eval: void,
     stack_pop: void,
+    stack_unpop: struct { eval: i64, method: stack.Method },
     none: void,
 };
 
@@ -62,10 +64,15 @@ pub fn perform(action: Action) Action {
             return Action.stack_pop;
         },
         .stack_pop => {
-            var last_method = stack.stack.last.?.data;
+            var unpop = Action{ .stack_unpop = .{ .method = stack.stack.last.?.data, .eval = stack.top_eval.? } };
             stack.pop(app.Allocator.allocator());
-            last_method.texture = null;
-            return Action{ .call = last_method };
+            unpop.stack_unpop.method.texture = null;
+            return unpop;
+        },
+        .stack_unpop => |data| {
+            stack.push(app.Allocator.allocator(), data.method);
+            stack.evalTop(app.renderer, data.eval);
+            return Action{ .stack_pop = {} };
         },
         .eval_function => |eval| {
             stack.evalTop(app.renderer, eval);

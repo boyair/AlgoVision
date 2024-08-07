@@ -64,6 +64,7 @@ pub fn pop(allocator: std.mem.Allocator) void {
         }
         allocator.destroy(last);
     }
+    top_eval = null;
 }
 
 pub fn draw(renderer: SDL.Renderer, view: View) void {
@@ -79,7 +80,6 @@ pub fn evalTop(renderer: SDL.Renderer, value: i64) void {
     if (stack.last) |top| {
         top_eval = value;
         top.data.makeTexture(renderer) catch unreachable;
-        top_eval = null;
     }
 }
 

@@ -11,14 +11,8 @@ const ZoomAnimation = @import("../animation.zig").ZoomAnimation;
 
 //calculates camera rect to view a block on the heap
 fn blockView(idx: usize) SDL.RectangleF {
-    //const block_center = Internals.blockCenter(idx);
     const view_size: SDL.Point = .{ .x = design.block.full_size.width * 9, .y = design.block.full_size.height * 9 };
-
     const block_view = Internals.blockRect(idx);
-    // block_view.x -= design.block.full_size.width * 4;
-    // block_view.y -= design.block.full_size.height * 4;
-    // block_view.width += design.block.full_size.width * 8;
-    // block_view.height += design.block.full_size.height * 8;
     return SDLex.alignedRect(block_view, .{ .x = 0.5, .y = 0.5 }, SDLex.conertVecPoint(view_size));
 }
 
@@ -47,6 +41,7 @@ fn rangeView(start: usize, end: usize) !SDL.RectangleF {
         .width = edge_length,
         .height = edge_length,
     };
+
     //zooming out a bit to prevent allocated memory from being at the edge of the screen
     result.x -= design.block.full_size.width * 4;
     result.y -= design.block.full_size.height * 4;
