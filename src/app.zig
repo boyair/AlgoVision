@@ -91,13 +91,10 @@ pub fn start() !void {
     mainLoop: while (true) {
         const start_time = std.time.nanoTimestamp();
         last_iteration_time = @intFromFloat(@as(f128, @floatFromInt(last_iteration_time)) * playback_speed);
-        operation_manager.update(if (paused) 0 else last_iteration_time);
+        operation_manager.update(if (paused) 0 else last_iteration_time, !freecam);
         const mouse_state = SDL.getMouseState();
         const mouse_pos: SDL.Point = .{ .x = mouse_state.x, .y = mouse_state.y };
         while (SDL.pollEvent()) |ev| {
-            if (SDL.c.SDL_PointInRect(@ptrCast(&mouse_pos), @ptrCast(&Design.UI.freecam.rect)) == SDL.c.SDL_TRUE) {
-                std.debug.print("flip\n", .{});
-            }
             switch (ev) {
                 .key_down => {
                     if (ev.key_down.scancode == .left)

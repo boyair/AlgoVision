@@ -28,11 +28,11 @@ pub fn main() !void {
     try app.start();
 }
 //TODO
-//add toggle for free cam which will disable zoomanimation
+//add toggle for free cam which will disable zoomanimation and allow scrollwheel and left click drag
 //make deinit/close functions for app and heap
 //make the init and deinit (^) functions request an allocator (better for testing memory leaks)
 //optional: make a wrapper for the init and deinit functions (^) that already has an allocator.
 //optional: make allocation, search and free a single action.
 //start working on sound
 //move logic to another thread to avoid framerate limitation (have a tickrate sepertae from framerate)
-//
+//improve ui element for current action. add arrows for fastforward/ undo

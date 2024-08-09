@@ -62,12 +62,16 @@ pub const Manager = struct {
         }
     }
 
-    pub fn update(self: *Manager, delta_time: i128) void {
+    pub fn update(self: *Manager, delta_time: i128, animate: bool) void {
         if (self.current_operation) |current_operation| {
             switch (self.state) {
                 .animate => {
-                    if (!self.animation_state.done) {
-                        self.animation_state.update(delta_time);
+                    if (!self.animation_state.isDone()) {
+                        if (animate) {
+                            self.animation_state.update(delta_time);
+                        } else {
+                            self.animation_state.passed_duration += delta_time;
+                        }
                         return;
                     }
                 },
