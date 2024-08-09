@@ -41,11 +41,11 @@ pub const View = struct {
     }
     pub fn scale_vec_port_to_cam(self: View, original: Vec2) Vec2 {
         const portF = SDLex.convertSDLRect(self.port);
-        return Vec2{ .x = original.x * portF.width / self.cam.width + portF.x, .y = original.y * portF.height / self.cam.height + portF.y };
+        return Vec2{ .x = original.x * portF.width / self.cam.width, .y = original.y * portF.height / self.cam.height };
     }
     pub fn scale_vec_cam_to_port(self: View, original: Vec2) Vec2 {
         const portF = SDLex.convertSDLRect(self.port);
-        return Vec2{ .x = original.x * self.cam.width / portF.width + self.cam.x, .y = original.y * self.cam.height / portF.height + self.cam.y };
+        return Vec2{ .x = original.x * self.cam.width / portF.width, .y = original.y * self.cam.height / portF.height };
     }
     pub fn keepInLimits(self: *View) bool {
         const original_port = self.cam;

@@ -116,10 +116,22 @@ pub fn start() !void {
                 },
                 .mouse_wheel => {
                     if (SDL.c.SDL_PointInRect(@ptrCast(&mouse_pos), @ptrCast(&cam_view.port)) == SDL.c.SDL_TRUE) {
-                        const delta: f32 = @floatFromInt(ev.mouse_wheel.delta_y);
-                        const zoomed_port = cam_view.getZoomed(1.0 + delta / 8.0, mouse_pos);
-                        cam_view.cam = if (!cam_view.offLimits(zoomed_port)) zoomed_port else cam_view.cam;
+                        if (freecam) {
+                            const delta: f32 = @floatFromInt(ev.mouse_wheel.delta_y);
+                            const zoomed_port = cam_view.getZoomed(1.0 + delta / 8.0, mouse_pos);
+                            cam_view.cam = if (!cam_view.offLimits(zoomed_port)) zoomed_port else cam_view.cam;
+                        }
                     } else _ = UI.scrollForSpeed(&playback_speed, ev.mouse_wheel.delta_y, mouse_pos);
+                },
+                .mouse_motion => {
+                    const mouse_motion = cam_view.scale_vec_cam_to_port(SDLex.conertVecPoint(SDL.Point{ .x = ev.mouse_motion.delta_x, .y = ev.mouse_motion.delta_y }));
+                    if (freecam and
+                        SDL.c.SDL_PointInRect(@ptrCast(&mouse_pos), @ptrCast(&cam_view.port)) == SDL.c.SDL_TRUE and
+                        ev.mouse_motion.button_state.getPressed(.right))
+                    {
+                        cam_view.cam.x -= mouse_motion.x;
+                        cam_view.cam.y -= mouse_motion.y;
+                    }
                 },
 
                 .quit => break :mainLoop,
