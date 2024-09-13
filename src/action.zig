@@ -64,7 +64,7 @@ pub fn perform(action: Action) Action {
             return Action.stack_pop;
         },
         .stack_pop => {
-            var unpop = Action{ .stack_unpop = .{ .method = stack.stack.last.?.data, .eval = stack.top_eval.? } };
+            var unpop = Action{ .stack_unpop = .{ .method = stack.stack.last.?.data, .eval = stack.top_eval orelse 0 } };
             stack.pop(app.Allocator.allocator());
             unpop.stack_unpop.method.texture = null;
             return unpop;

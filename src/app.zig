@@ -32,7 +32,7 @@ var initiallized = false;
 var state: State = State.heap;
 var running_time: i128 = 0;
 
-var playback_speed: f128 = 1;
+var playback_speed: f128 = 1.5;
 var paused = false;
 var freecam = false;
 
@@ -62,13 +62,10 @@ pub fn init() !void {
     Design.UI.view.cam.x = 0; // not require an offset when drawing ui.
     operation_manager = Operation.Manager.init();
 
-    //init fonts
     exe_path = try std.fs.selfExeDirPathAlloc(gpa.allocator());
 
-    const UI_font_path = try std.fmt.allocPrintZ(gpa.allocator(), "{s}/ioveska.ttf", .{exe_path});
-    defer gpa.allocator().free(UI_font_path);
-    Design.UI.font = try SDL.ttf.openFont(UI_font_path, 150);
-
+    //init UI
+    try UI.init(renderer, exe_path, "/3270.ttf");
     //loading screen
     const loading_surf = try Design.UI.font.renderTextSolid("Loading...", SDL.Color.rgb(150, 150, 150));
     const loading_tex = try SDL.createTextureFromSurface(renderer, loading_surf);
@@ -77,9 +74,6 @@ pub fn init() !void {
 
     //init heap
     heap_internal.init(renderer, Allocator.allocator());
-
-    //init UI
-    try UI.init(renderer);
 
     //init stack
     try stack_internal.init();
@@ -107,12 +101,7 @@ pub fn start() !void {
                         paused = !paused;
                 },
                 .mouse_button_down => {
-                    if (ev.mouse_button_down.button == .left) {
-                        const mouse_on_ui = UI.relativePoint(mouse_pos);
-                        if (SDL.c.SDL_PointInRect(@ptrCast(&mouse_on_ui), @ptrCast(&Design.UI.freecam.rect)) == SDL.c.SDL_TRUE) {
-                            freecam = !freecam;
-                        }
-                    }
+                    if (ev.mouse_button_down.button == .left) {}
                 },
                 .mouse_wheel => {
                     if (SDL.c.SDL_PointInRect(@ptrCast(&mouse_pos), @ptrCast(&cam_view.port)) == SDL.c.SDL_TRUE) {
@@ -121,8 +110,9 @@ pub fn start() !void {
                             const zoomed_port = cam_view.getZoomed(1.0 + delta / 8.0, mouse_pos);
                             cam_view.cam = if (!cam_view.offLimits(zoomed_port)) zoomed_port else cam_view.cam;
                         }
-                    } else _ = UI.scrollForSpeed(&playback_speed, ev.mouse_wheel.delta_y, mouse_pos);
+                    }
                 },
+
                 .mouse_motion => {
                     const mouse_motion = cam_view.scale_vec_cam_to_port(SDLex.conertVecPoint(SDL.Point{ .x = ev.mouse_motion.delta_x, .y = ev.mouse_motion.delta_y }));
                     if (freecam and
@@ -137,6 +127,8 @@ pub fn start() !void {
                 .quit => break :mainLoop,
                 else => {},
             }
+            UI.speed_element.handleEvent(&ev, mouse_pos, &playback_speed);
+            UI.freecam_element.handleEvent(&ev, mouse_pos, &freecam);
         }
 
         try renderer.clear();

@@ -22,6 +22,10 @@ pub fn fullyQuitSDL() void {
     SDL.ttf.quit();
     SDL.quit();
 }
+pub fn pointInRect(point: SDL.Point, rect: SDL.Rectangle) bool {
+    return point.x > rect.x and point.x < rect.x + rect.width and
+        point.y > rect.y and point.y < rect.y + rect.height;
+}
 
 pub fn loadResource(exe_path: []const u8, comptime relative_path: []const u8, renderer: ?SDL.Renderer) !resourceType(relative_path) {
     var full_path_buf: [120]u8 = undefined;
