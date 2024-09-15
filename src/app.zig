@@ -32,8 +32,7 @@ var initiallized = false;
 var state: State = State.heap;
 var running_time: i128 = 0;
 
-var playback_speed: f128 = 1.5;
-var paused = false;
+var playback_speed: f128 = 1.0;
 var freecam = false;
 
 //TODO: move this function to a more apropriate file
@@ -85,7 +84,7 @@ pub fn start() !void {
     mainLoop: while (true) {
         const start_time = std.time.nanoTimestamp();
         last_iteration_time = @intFromFloat(@as(f128, @floatFromInt(last_iteration_time)) * playback_speed);
-        operation_manager.update(if (paused) 0 else last_iteration_time, !freecam);
+        operation_manager.update(last_iteration_time, !freecam);
         const mouse_state = SDL.getMouseState();
         const mouse_pos: SDL.Point = .{ .x = mouse_state.x, .y = mouse_state.y };
         while (SDL.pollEvent()) |ev| {
@@ -97,8 +96,9 @@ pub fn start() !void {
                         operation_manager.fastForward();
                     if (ev.key_down.scancode == .escape)
                         break :mainLoop;
-                    if (ev.key_down.scancode == .space)
-                        paused = !paused;
+                    if (ev.key_down.scancode == .space) {
+                        playback_speed = if (playback_speed == 0) 1 else 0;
+                    }
                 },
                 .mouse_button_down => {
                     if (ev.mouse_button_down.button == .left) {}

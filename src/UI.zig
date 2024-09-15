@@ -54,14 +54,19 @@ fn uiElement(value_type: type, print: fn (buf: []u8, val: value_type) [:0]u8, ev
 
 pub var speed_element = uiElement(f128, printSpeed, scrollForSpeed){ .texture = undefined, .cache = 1.0, .design = &Design.speed };
 fn printSpeed(buf: []u8, speed: f128) [:0]u8 {
-    return std.fmt.bufPrintZ(buf, "speed: {d:.2}☐", .{speed}) catch unreachable;
+    return std.fmt.bufPrintZ(buf, "speed: {d:.2} {s:>8}", .{ speed, if (speed == 0) "(paused)" else "" }) catch unreachable;
 }
 pub fn scrollForSpeed(event: *const SDL.Event, data: *f128) void {
-    if (event.* == .mouse_wheel) {
+    if (event.* == .mouse_wheel and data.* != 0) {
         const scroll_delta = event.mouse_wheel.delta_y;
         data.* *= (1.0 + @as(f128, @floatFromInt(scroll_delta)) / 10.0);
         data.* = @min(10.0, data.*);
         data.* = @max(0.2, data.*);
+    }
+    if (event.* == .mouse_button_up) {
+        if (event.mouse_button_up.button == .left) {
+            data.* = if (data.* == 0) 1 else 0;
+        }
     }
 }
 

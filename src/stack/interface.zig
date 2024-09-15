@@ -23,9 +23,8 @@ fn topMethodView(stack_len: isize) SDL.RectangleF {
 }
 
 pub fn call(function: *const fn (args: []i64) i64, args: []i64) i64 {
-    //make animation (empty for now)
-    std.debug.print("size: {d}\n", .{stack_len_runtime});
 
+    //make animation
     const call_animation: ZoomAnimation = ZoomAnimation.init(&app.cam_view, null, topMethodView(stack_len_runtime), 500_000_000);
     //copy args to a list
     var args_list = std.ArrayList(i64).init(app.Allocator.allocator());

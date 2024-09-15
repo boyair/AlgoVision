@@ -45,7 +45,7 @@ pub const UI = struct {
         bg: SDL.Color,
     };
     pub var speed = element{
-        .rect = .{ .x = 0, .y = 0, .width = 250, .height = 100 },
+        .rect = .{ .x = 0, .y = 0, .width = 400, .height = 100 },
         .fg = SDL.Color.white,
         .bg = SDL.Color.rgba(0, 0, 0, 255),
     };
