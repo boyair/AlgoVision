@@ -12,6 +12,7 @@ pub fn init() !void {
     stack = std.DoublyLinkedList(Method){};
     design.font = try SDLex.loadResource(app.exe_path, "/ioveska.ttf", app.renderer);
     design.method.bg = try SDLex.loadResource(app.exe_path, "/textures/method.png", app.renderer);
+    design.frame.texture = try SDLex.loadResource(app.exe_path, "/textures/ram.png", app.renderer);
 }
 
 pub const Method = struct {
@@ -68,11 +69,19 @@ pub fn pop(allocator: std.mem.Allocator) void {
 }
 
 pub fn draw(renderer: SDL.Renderer, view: View) void {
+    view.draw(SDLex.convertSDLRect(design.frame.rect), design.frame.texture, app.renderer);
     var it = stack.first;
     var currentY = design.position.y;
-    while (it) |node| : (it = it.?.next) {
-        view.draw(SDLex.convertSDLRect(SDL.Rectangle{ .x = design.position.x, .y = currentY, .width = 1000, .height = 500 }), node.data.texture.?, renderer);
+    while (it) |node| : ({
+        it = it.?.next;
         currentY -= 500;
+    }) {
+        var converted_rect: SDL.RectangleF = view.convert(SDLex.convertSDLRect(SDL.Rectangle{ .x = design.position.x, .y = currentY, .width = 1000, .height = 500 })) catch continue;
+        converted_rect.width += 1;
+        converted_rect.height += 1;
+        renderer.copy(node.data.texture.?, SDLex.convertSDLRect(converted_rect), null) catch {
+            @panic("failed to draw method!");
+        };
     }
 }
 

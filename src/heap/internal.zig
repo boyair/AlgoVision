@@ -237,6 +237,7 @@ pub fn drawBatch(idx: idx2D, renderer: SDL.Renderer, view: View) void {
         .height = @floatFromInt((design.block.full_size.height) * batch_size.height),
     };
     var converted_rect = SDLex.convertSDLRect(view.convert(batch_rect) catch return);
+    //simple trick to prevent 1 pixel gaps between chuncks
     converted_rect.width += 1;
     converted_rect.height += 1;
     renderer.copy(batch_tex[idx.y][idx.x], converted_rect, null) catch unreachable;

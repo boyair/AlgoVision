@@ -126,6 +126,7 @@ pub fn convertSDLRect(original: anytype) if (@TypeOf(original) == SDL.RectangleF
             .height = @floatFromInt(original.height),
         };
     }
+    @compileLog("type: {}", org_type);
     @compileError("ConvertSDLRect expects a rect type\n");
 }
 

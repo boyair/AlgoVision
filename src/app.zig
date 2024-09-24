@@ -64,7 +64,7 @@ pub fn init() !void {
     exe_path = try std.fs.selfExeDirPathAlloc(gpa.allocator());
 
     //init UI
-    try UI.init(renderer, exe_path, "/3270.ttf");
+    try UI.init(exe_path, "/3270.ttf", renderer);
     //loading screen
     const loading_surf = try Design.UI.font.renderTextSolid("Loading...", SDL.Color.rgb(150, 150, 150));
     const loading_tex = try SDL.createTextureFromSurface(renderer, loading_surf);
@@ -128,7 +128,8 @@ pub fn start() !void {
                 else => {},
             }
             UI.speed_element.handleEvent(&ev, mouse_pos, &playback_speed);
-            UI.freecam_element.handleEvent(&ev, mouse_pos, &freecam);
+            //UI.freecam_element.handleEvent(&ev, mouse_pos, &freecam);
+            UI.freecam_checkbox.handleEvent(&ev, mouse_pos, &freecam);
         }
 
         try renderer.clear();
@@ -138,6 +139,7 @@ pub fn start() !void {
         try UI.drawBG();
         UI.speed_element.draw(playback_speed);
         UI.freecam_element.draw(freecam);
+        UI.freecam_checkbox.draw(freecam);
         if (operation_manager.current_operation) |operation| {
             UI.action_element.draw(operation.data.action);
         }

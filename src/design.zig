@@ -33,7 +33,7 @@ pub const UI = struct {
     //defined in UI init function
     pub var font: SDL.ttf.Font = undefined;
 
-    pub const bg = SDL.Color.black;
+    pub const bg = SDL.Color.rgb(100, 100, 100);
     pub const width_portion = 0.25; // the part of the screen dedicated for the ui
 
     //defined in app init function based on screen resolution and width_portion
@@ -55,7 +55,12 @@ pub const UI = struct {
         .bg = SDL.Color.rgba(0, 0, 0, 255),
     };
     pub var freecam = element{
-        .rect = .{ .x = 0, .y = 400, .width = 400, .height = 100 },
+        .rect = .{ .x = 200, .y = 400, .width = 400, .height = 100 },
+        .fg = SDL.Color.cyan,
+        .bg = SDL.Color.rgba(0, 0, 0, 255),
+    };
+    pub var CBfreecam = element{
+        .rect = .{ .x = 0, .y = 400, .width = 150, .height = 100 },
         .fg = SDL.Color.cyan,
         .bg = SDL.Color.rgba(0, 0, 0, 255),
     };
@@ -64,11 +69,15 @@ pub const UI = struct {
 pub const stack = struct {
     //defined in stack init function
     pub var font: SDL.ttf.Font = undefined;
-    pub const position: SDL.Point = .{ .x = -2000, .y = 2000 };
+    pub const position: SDL.Point = .{ .x = -2275, .y = 8900 };
+    pub const frame = struct {
+        pub var texture: SDL.Texture = undefined;
+        pub const rect: SDL.Rectangle = .{ .x = -3000, .y = 0, .width = 2000, .height = 10000 };
+    };
     pub const method = struct {
         pub const fg: SDL.Color = SDL.Color.red;
         //defined in stack init function. . .
         pub var bg: SDL.Texture = undefined;
-        pub const size: SDL.Size = .{ .width = 1000, .height = 500 };
+        pub const size: SDL.Size = .{ .width = 100, .height = 50 };
     };
 };
