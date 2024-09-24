@@ -36,9 +36,9 @@ fn uiElement(value_type: type, makeTexture: fn (value: value_type) SDL.Texture, 
             }
         }
         pub fn updateTexture(self: *@This(), value: value_type) !void {
-            // if (self.texture) |prev_tex| {
-            //     prev_tex.destroy();
-            // }
+            if (self.texture) |prev_tex| {
+                prev_tex.destroy();
+            }
             self.texture = makeTexture(value);
         }
         pub fn isHovered(self: *const Self, mouse_pos: SDL.Point) bool {
@@ -89,7 +89,8 @@ var checkboxTextures = struct {
 }{ .enabled = undefined, .disabled = undefined };
 
 fn makeCheckBox(enabled: bool) SDL.Texture {
-    return if (enabled) checkboxTextures.enabled else checkboxTextures.disabled;
+    const right_texture = if (enabled) checkboxTextures.enabled else checkboxTextures.disabled;
+    return SDLex.cloneTexture(right_texture, owner_renderer) catch unreachable;
 }
 pub const checkbox = uiElement(bool, makeCheckBox, checkBoxClick);
 pub var freecam_checkbox = checkbox{ .texture = null, .cache = false, .rect = &Design.CBfreecam.rect };

@@ -129,6 +129,20 @@ pub fn convertSDLRect(original: anytype) if (@TypeOf(original) == SDL.RectangleF
     @compileLog("type: {}", org_type);
     @compileError("ConvertSDLRect expects a rect type\n");
 }
+pub fn cloneTexture(original: SDL.Texture, renderer: SDL.Renderer) !SDL.Texture {
+    //create new texture with the same properties
+    const info = try original.query();
+    const new_tex: SDL.Texture = try SDL.createTexture(renderer, info.format, .target, info.width, info.height);
+    //save renderer target to avoid harming the regular use of it
+    const last_renderer_target = renderer.getTarget();
+    try renderer.setTarget(new_tex);
+    //copy the texture
+    try renderer.copy(original, null, null);
+    try new_tex.setBlendMode(try original.getBlendMode());
+    //revert renderer to prev target
+    try renderer.setTarget(last_renderer_target);
+    return new_tex;
+}
 
 pub fn compareRect(rect1: anytype, rect2: anytype) bool {
     return rect1.x == rect2.x and

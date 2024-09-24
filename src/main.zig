@@ -64,7 +64,6 @@ pub fn main() !void {
     try app.start();
 }
 //TODO
-//add a checkbox as ui element for toggleable functions (can store the bool in the struct) (started)
 //change ui element design to be just a rect and the element struct rename to TextElement
 //finish seperation of ui element and text element.
 //make a pointer (can only be allocated on the heap) with an arrow that points to the address
