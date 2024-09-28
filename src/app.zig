@@ -138,7 +138,7 @@ pub fn start() !void {
 
         try UI.drawBG();
         UI.speed_element.draw(playback_speed);
-        UI.freecam_element.draw(freecam);
+        UI.freecam_element.draw({});
         UI.freecam_checkbox.draw(freecam);
         if (operation_manager.current_operation) |operation| {
             UI.action_element.draw(operation.data.action);

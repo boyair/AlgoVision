@@ -11,7 +11,7 @@ pub fn init(exe_path: []const u8, comptime font_path: []const u8, renderer: SDL.
     try checkboxTextures.init(exe_path, renderer);
     try speed_element.updateTexture(1.0);
     try action_element.updateTexture(Action.actions.none);
-    try freecam_element.updateTexture(false);
+    try freecam_element.updateTexture({});
     try freecam_checkbox.updateTexture(false);
 }
 fn uiElement(value_type: type, makeTexture: fn (value: value_type) SDL.Texture, eventHandle: ?fn (event: *const SDL.Event, data: *value_type) void) type {
@@ -47,7 +47,7 @@ fn uiElement(value_type: type, makeTexture: fn (value: value_type) SDL.Texture, 
         }
     };
 }
-pub fn textElement(value_type: type, print: fn (buf: []u8, val: value_type) [:0]u8, eventHandle: ?fn (event: *const SDL.Event, data: *value_type) void, design: *const Design.element) type {
+pub fn textElement(value_type: type, print: fn (buf: []u8, val: value_type) [:0]const u8, eventHandle: ?fn (event: *const SDL.Event, data: *value_type) void, design: *const Design.element) type {
     return struct {
         element: uiElement(value_type, makeTexture, eventHandle),
 
@@ -92,7 +92,7 @@ fn makeCheckBox(enabled: bool) SDL.Texture {
     const right_texture = if (enabled) checkboxTextures.enabled else checkboxTextures.disabled;
     return SDLex.cloneTexture(right_texture, owner_renderer) catch unreachable;
 }
-pub const checkbox = uiElement(bool, makeCheckBox, checkBoxClick);
+pub const checkbox = uiElement(bool, makeCheckBox, freecamToggle);
 pub var freecam_checkbox = checkbox{ .texture = null, .cache = false, .rect = &Design.CBfreecam.rect };
 
 pub var speed_element = textElement(
@@ -101,7 +101,7 @@ pub var speed_element = textElement(
     scrollForSpeed,
     &Design.speed,
 ).init(1.0).element;
-fn printSpeed(buf: []u8, speed: f128) [:0]u8 {
+fn printSpeed(buf: []u8, speed: f128) [:0]const u8 {
     return std.fmt.bufPrintZ(buf, "speed: {d:.2} {s:>8}", .{ speed, if (speed == 0) "(paused)" else "" }) catch unreachable;
 }
 pub fn scrollForSpeed(event: *const SDL.Event, data: *f128) void {
@@ -119,14 +119,16 @@ pub fn scrollForSpeed(event: *const SDL.Event, data: *f128) void {
 }
 
 pub var action_element = textElement(Action.actions, printAction, null, &Design.action).init(Action.actions.none).element;
-fn printAction(buf: []u8, action: Action.actions) [:0]u8 {
+fn printAction(buf: []u8, action: Action.actions) [:0]const u8 {
     return std.fmt.bufPrintZ(buf, "action: {s:<16}", .{@tagName(action)}) catch unreachable;
 }
-fn printFreeCam(buf: []u8, on: bool) [:0]u8 {
-    return std.fmt.bufPrintZ(buf, "freecam: {s:<16}", .{if (on) "V" else "X"}) catch unreachable;
+fn printFreeCam(buf: []u8, on: void) [:0]const u8 {
+    _ = buf;
+    _ = on;
+    return "freecam";
 }
 
-pub var freecam_element = textElement(bool, printFreeCam, freecamToggle, &Design.freecam).init(false).element;
+pub var freecam_element = textElement(void, printFreeCam, null, &Design.freecam).init({}).element;
 
 pub fn freecamToggle(event: *const SDL.Event, data: *bool) void {
     if (event.* == .mouse_button_up and event.mouse_button_up.button == .left) {

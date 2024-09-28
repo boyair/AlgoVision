@@ -74,9 +74,9 @@ pub fn draw(renderer: SDL.Renderer, view: View) void {
     var currentY = design.position.y;
     while (it) |node| : ({
         it = it.?.next;
-        currentY -= 500;
+        currentY -= design.method.size.height;
     }) {
-        var converted_rect: SDL.RectangleF = view.convert(SDLex.convertSDLRect(SDL.Rectangle{ .x = design.position.x, .y = currentY, .width = 1000, .height = 500 })) catch continue;
+        var converted_rect: SDL.RectangleF = view.convert(SDLex.convertSDLRect(SDL.Rectangle{ .x = design.position.x, .y = currentY, .width = design.method.size.width, .height = design.method.size.height })) catch continue;
         converted_rect.width += 1;
         converted_rect.height += 1;
         renderer.copy(node.data.texture.?, SDLex.convertSDLRect(converted_rect), null) catch {

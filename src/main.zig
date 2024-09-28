@@ -50,8 +50,9 @@ fn fib(num: []i64) i64 {
 //FIB with CAHCE!!
 pub fn main() !void {
     try app.init();
-    var num: [1]i64 = .{50};
-    mem = app.heap.allocate(gpa.allocator(), 50);
+    const fib_num = 7;
+    var num: [1]i64 = .{fib_num};
+    mem = app.heap.allocate(gpa.allocator(), fib_num);
 
     for (mem) |block| {
         heap.set(block, -1);
@@ -64,11 +65,10 @@ pub fn main() !void {
     try app.start();
 }
 //TODO
-//change ui element design to be just a rect and the element struct rename to TextElement
-//finish seperation of ui element and text element.
+// fix camera weird behaviour when looking at the stack
 //make a pointer (can only be allocated on the heap) with an arrow that points to the address
 //make pointer(^) arrows toggleable with a checkbox
-//make deinit/close functions for app and heap
+//make deinit/close functions for app, heap, stack an UI.
 //make the init and deinit (^) functions request an allocator (better for testing memory leaks)
 //optional: make a wrapper for the init and deinit functions (^) that already has an allocator.
 //optional: make allocation, search and free a single action.
