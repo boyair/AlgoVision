@@ -65,7 +65,6 @@ pub fn main() !void {
     try app.start();
 }
 //TODO
-// fix camera weird behaviour when looking at the stack
 //make a pointer (can only be allocated on the heap) with an arrow that points to the address
 //make pointer(^) arrows toggleable with a checkbox
 //make deinit/close functions for app, heap, stack an UI.

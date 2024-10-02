@@ -15,6 +15,34 @@ pub fn init() !void {
     design.frame.texture = try SDLex.loadResource(app.exe_path, "/textures/ram.png", app.renderer);
 }
 
+var TextureUpdateMut = struct {
+    mutex: std.Thread.Mutex,
+    condition: std.Thread.Condition,
+    needs_update: bool,
+}{ .mutex = .{}, .condition = .{}, .needs_update = false };
+//functions to handle signaling the main thread to update the textures
+fn sendTextureUpdateSignal() void {
+    TextureUpdateMut.mutex.lock();
+    defer TextureUpdateMut.mutex.unlock();
+    TextureUpdateMut.needs_update = true;
+    while (TextureUpdateMut.needs_update) {
+        TextureUpdateMut.condition.wait(&TextureUpdateMut.mutex);
+    }
+}
+
+pub fn reciveTextureUpdateSignal() void {
+    TextureUpdateMut.mutex.lock();
+    defer TextureUpdateMut.mutex.unlock();
+    if (TextureUpdateMut.needs_update) {
+        if (stack.last) |top_method| {
+            top_method.data.makeTexture(app.renderer) catch unreachable;
+            TextureUpdateMut.condition.signal();
+        }
+    }
+    TextureUpdateMut.needs_update = false;
+}
+//-----------------------------------------------------------------------
+
 pub const Method = struct {
     const Self = @This();
     function: *const fn ([]i64) i64,
@@ -55,8 +83,7 @@ pub fn push(allocator: std.mem.Allocator, method: Method) void {
     const node = allocator.create(std.DoublyLinkedList(Method).Node) catch unreachable;
     node.data = method;
     stack.append(node);
-
-    stack.last.?.data.makeTexture(app.renderer) catch unreachable;
+    sendTextureUpdateSignal();
 }
 pub fn pop(allocator: std.mem.Allocator) void {
     if (stack.pop()) |last| {
@@ -86,16 +113,19 @@ pub fn draw(renderer: SDL.Renderer, view: View) void {
 }
 
 pub fn evalTop(renderer: SDL.Renderer, value: i64) void {
+    _ = renderer;
     if (stack.last) |top| {
+        _ = top;
         top_eval = value;
-        top.data.makeTexture(renderer) catch unreachable;
+        sendTextureUpdateSignal();
     }
 }
 
 pub fn forgetEval(renderer: SDL.Renderer) void {
+    _ = renderer;
     if (stack.last) |top| {
+        _ = top;
         top_eval = null;
-        top.data.makeTexture(renderer) catch unreachable;
-        top_eval = null;
+        sendTextureUpdateSignal();
     }
 }

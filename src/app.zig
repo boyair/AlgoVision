@@ -31,6 +31,7 @@ pub var cam_view: View = undefined;
 var initiallized = false;
 var state: State = State.heap;
 var running_time: i128 = 0;
+var running: bool = true;
 
 var playback_speed: f128 = 1.0;
 var freecam = false;
@@ -79,73 +80,101 @@ pub fn init() !void {
     initiallized = true;
 }
 
-pub fn start() !void {
+inline fn drawFrame() !void {
+    try renderer.clear();
+    heap_internal.draw(renderer, cam_view);
+    stack_internal.draw(renderer, cam_view);
+
+    try UI.drawBG();
+    UI.speed_element.draw(playback_speed);
+    UI.freecam_element.draw({});
+    UI.freecam_checkbox.draw(freecam);
+    if (operation_manager.current_operation) |operation| {
+        UI.action_element.draw(operation.data.action);
+    }
+
+    renderer.present();
+}
+
+fn tickUpdate(last_iteration_time: i128) !void {
+    operation_manager.update(last_iteration_time, !freecam);
+    const mouse_state = SDL.getMouseState();
+    const mouse_pos: SDL.Point = .{ .x = mouse_state.x, .y = mouse_state.y };
+    while (SDL.pollEvent()) |ev| {
+        switch (ev) {
+            .key_down => {
+                if (ev.key_down.scancode == .left)
+                    operation_manager.undoLast();
+                if (ev.key_down.scancode == .right)
+                    operation_manager.fastForward();
+                if (ev.key_down.scancode == .escape)
+                    running = false;
+                if (ev.key_down.scancode == .space) {
+                    playback_speed = if (playback_speed == 0) 1 else 0;
+                }
+            },
+            .mouse_button_down => {
+                if (ev.mouse_button_down.button == .left) {}
+            },
+            .mouse_wheel => {
+                if (SDL.c.SDL_PointInRect(@ptrCast(&mouse_pos), @ptrCast(&cam_view.port)) == SDL.c.SDL_TRUE) {
+                    if (freecam) {
+                        const delta: f32 = @floatFromInt(ev.mouse_wheel.delta_y);
+                        const zoomed_port = cam_view.getZoomed(1.0 + delta / 8.0, mouse_pos);
+                        cam_view.cam = if (!cam_view.offLimits(zoomed_port)) zoomed_port else cam_view.cam;
+                    }
+                }
+            },
+
+            .mouse_motion => {
+                const mouse_motion = cam_view.scale_vec_cam_to_port(SDLex.conertVecPoint(SDL.Point{ .x = ev.mouse_motion.delta_x, .y = ev.mouse_motion.delta_y }));
+                if (freecam and
+                    SDL.c.SDL_PointInRect(@ptrCast(&mouse_pos), @ptrCast(&cam_view.port)) == SDL.c.SDL_TRUE and
+                    ev.mouse_motion.button_state.getPressed(.right))
+                {
+                    cam_view.cam.x -= mouse_motion.x;
+                    cam_view.cam.y -= mouse_motion.y;
+                }
+            },
+
+            .quit => {
+                running = false;
+            },
+            else => {},
+        }
+        UI.speed_element.handleEvent(&ev, mouse_pos, &playback_speed);
+        //UI.freecam_element.handleEvent(&ev, mouse_pos, &freecam);
+        UI.freecam_checkbox.handleEvent(&ev, mouse_pos, &freecam);
+    }
+}
+fn runLogic() void {
     var last_iteration_time: i128 = 0;
-    mainLoop: while (true) {
+    while (running) {
         const start_time = std.time.nanoTimestamp();
         last_iteration_time = @intFromFloat(@as(f128, @floatFromInt(last_iteration_time)) * playback_speed);
-        operation_manager.update(last_iteration_time, !freecam);
-        const mouse_state = SDL.getMouseState();
-        const mouse_pos: SDL.Point = .{ .x = mouse_state.x, .y = mouse_state.y };
-        while (SDL.pollEvent()) |ev| {
-            switch (ev) {
-                .key_down => {
-                    if (ev.key_down.scancode == .left)
-                        operation_manager.undoLast();
-                    if (ev.key_down.scancode == .right)
-                        operation_manager.fastForward();
-                    if (ev.key_down.scancode == .escape)
-                        break :mainLoop;
-                    if (ev.key_down.scancode == .space) {
-                        playback_speed = if (playback_speed == 0) 1 else 0;
-                    }
-                },
-                .mouse_button_down => {
-                    if (ev.mouse_button_down.button == .left) {}
-                },
-                .mouse_wheel => {
-                    if (SDL.c.SDL_PointInRect(@ptrCast(&mouse_pos), @ptrCast(&cam_view.port)) == SDL.c.SDL_TRUE) {
-                        if (freecam) {
-                            const delta: f32 = @floatFromInt(ev.mouse_wheel.delta_y);
-                            const zoomed_port = cam_view.getZoomed(1.0 + delta / 8.0, mouse_pos);
-                            cam_view.cam = if (!cam_view.offLimits(zoomed_port)) zoomed_port else cam_view.cam;
-                        }
-                    }
-                },
+        try tickUpdate(last_iteration_time);
 
-                .mouse_motion => {
-                    const mouse_motion = cam_view.scale_vec_cam_to_port(SDLex.conertVecPoint(SDL.Point{ .x = ev.mouse_motion.delta_x, .y = ev.mouse_motion.delta_y }));
-                    if (freecam and
-                        SDL.c.SDL_PointInRect(@ptrCast(&mouse_pos), @ptrCast(&cam_view.port)) == SDL.c.SDL_TRUE and
-                        ev.mouse_motion.button_state.getPressed(.right))
-                    {
-                        cam_view.cam.x -= mouse_motion.x;
-                        cam_view.cam.y -= mouse_motion.y;
-                    }
-                },
-
-                .quit => break :mainLoop,
-                else => {},
-            }
-            UI.speed_element.handleEvent(&ev, mouse_pos, &playback_speed);
-            //UI.freecam_element.handleEvent(&ev, mouse_pos, &freecam);
-            UI.freecam_checkbox.handleEvent(&ev, mouse_pos, &freecam);
+        const sleep_time: i128 = frame_time_nano - (std.time.nanoTimestamp() - start_time);
+        if (sleep_time > 0) {
+            std.time.sleep(@intCast(sleep_time));
         }
+        const end_time = std.time.nanoTimestamp();
+        std.time.sleep(@intCast(5000000 - (start_time - end_time)));
+        last_iteration_time = end_time - start_time;
+        running_time += last_iteration_time;
+    }
+}
 
-        try renderer.clear();
-        heap_internal.draw(renderer, cam_view);
-        stack_internal.draw(renderer, cam_view);
-
-        try UI.drawBG();
-        UI.speed_element.draw(playback_speed);
-        UI.freecam_element.draw({});
-        UI.freecam_checkbox.draw(freecam);
-        if (operation_manager.current_operation) |operation| {
-            UI.action_element.draw(operation.data.action);
-        }
-
-        renderer.present();
-
+pub fn start() !void {
+    const logic_thread = try std.Thread.spawn(.{}, runLogic, .{});
+    defer logic_thread.join();
+    var last_iteration_time: i128 = 0;
+    while (running) {
+        const start_time = std.time.nanoTimestamp();
+        last_iteration_time = @intFromFloat(@as(f128, @floatFromInt(last_iteration_time)) * playback_speed);
+        stack_internal.reciveTextureUpdateSignal();
+        try drawFrame();
+        //try tickUpdate(last_iteration_time);
         const sleep_time: i128 = frame_time_nano - (std.time.nanoTimestamp() - start_time);
         if (sleep_time > 0) {
             std.time.sleep(@intCast(sleep_time));
