@@ -14,7 +14,12 @@ pub fn init() !void {
     design.method.bg = try SDLex.loadResource(app.exe_path, "/textures/method.png", app.renderer);
     design.frame.texture = try SDLex.loadResource(app.exe_path, "/textures/ram.png", app.renderer);
 }
-
+//NOTE:
+//to solve the texture is null when drawing the mutex should lock before adding the method in the sending thread
+//and should be unlocked after drawing in the main thread
+//so that there is no possible timing where the method is added and draw to the screen
+//before its texture was created.
+var signal_count: u64 = 0;
 var TextureUpdateMut = struct {
     mutex: std.Thread.Mutex,
     condition: std.Thread.Condition,
@@ -25,22 +30,15 @@ fn sendTextureUpdateSignal() void {
     TextureUpdateMut.mutex.lock();
     defer TextureUpdateMut.mutex.unlock();
     TextureUpdateMut.needs_update = true;
+    signal_count += 1;
     while (TextureUpdateMut.needs_update) {
+        std.debug.print("send signal {d}. waiting . . .\n", .{signal_count});
         TextureUpdateMut.condition.wait(&TextureUpdateMut.mutex);
     }
+    std.debug.print("signal {d} was waited\n", .{signal_count});
 }
 
-pub fn reciveTextureUpdateSignal() void {
-    TextureUpdateMut.mutex.lock();
-    defer TextureUpdateMut.mutex.unlock();
-    if (TextureUpdateMut.needs_update) {
-        if (stack.last) |top_method| {
-            top_method.data.makeTexture(app.renderer) catch unreachable;
-            TextureUpdateMut.condition.signal();
-        }
-    }
-    TextureUpdateMut.needs_update = false;
-}
+pub fn reciveTextureUpdateSignal() void {}
 //-----------------------------------------------------------------------
 
 pub const Method = struct {
@@ -96,6 +94,16 @@ pub fn pop(allocator: std.mem.Allocator) void {
 }
 
 pub fn draw(renderer: SDL.Renderer, view: View) void {
+    TextureUpdateMut.mutex.lock();
+    defer TextureUpdateMut.mutex.unlock();
+    if (TextureUpdateMut.needs_update) {
+        std.debug.print("recived signal {d}. processing . . .\n", .{signal_count});
+        if (stack.last) |top_method| {
+            top_method.data.makeTexture(app.renderer) catch unreachable;
+            TextureUpdateMut.needs_update = false;
+            TextureUpdateMut.condition.signal();
+        }
+    }
     view.draw(SDLex.convertSDLRect(design.frame.rect), design.frame.texture, app.renderer);
     var it = stack.first;
     var currentY = design.position.y;

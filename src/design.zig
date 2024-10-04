@@ -1,6 +1,8 @@
 const SDL = @import("sdl2");
 const View = @import("view.zig").View;
 pub var BG_color: SDL.Color = SDL.Color.rgb(90, 90, 90);
+pub const FPS = 144;
+pub const frame_time = 1_000_000_000 / FPS;
 
 pub const heap = struct {
     //defined in heap init function

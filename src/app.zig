@@ -32,6 +32,8 @@ var initiallized = false;
 var state: State = State.heap;
 var running_time: i128 = 0;
 var running: bool = true;
+const tick_rate = 200; // logic updates per seconds
+const tick_time = 1_000_000_000 / tick_rate; // time for logic update in ns
 
 var playback_speed: f128 = 1.0;
 var freecam = false;
@@ -159,7 +161,7 @@ fn runLogic() void {
             std.time.sleep(@intCast(sleep_time));
         }
         const end_time = std.time.nanoTimestamp();
-        std.time.sleep(@intCast(5000000 - (start_time - end_time)));
+        std.time.sleep(@intCast(tick_time - (start_time - end_time)));
         last_iteration_time = end_time - start_time;
         running_time += last_iteration_time;
     }
@@ -168,20 +170,16 @@ fn runLogic() void {
 pub fn start() !void {
     const logic_thread = try std.Thread.spawn(.{}, runLogic, .{});
     defer logic_thread.join();
-    var last_iteration_time: i128 = 0;
     while (running) {
         const start_time = std.time.nanoTimestamp();
-        last_iteration_time = @intFromFloat(@as(f128, @floatFromInt(last_iteration_time)) * playback_speed);
         stack_internal.reciveTextureUpdateSignal();
         try drawFrame();
-        //try tickUpdate(last_iteration_time);
         const sleep_time: i128 = frame_time_nano - (std.time.nanoTimestamp() - start_time);
         if (sleep_time > 0) {
             std.time.sleep(@intCast(sleep_time));
         }
         const end_time = std.time.nanoTimestamp();
-        last_iteration_time = end_time - start_time;
-        running_time += last_iteration_time;
+        std.time.sleep(@intCast(Design.frame_time - (start_time - end_time)));
     }
 }
 
