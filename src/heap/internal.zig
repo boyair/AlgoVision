@@ -259,7 +259,7 @@ pub fn get(idx: usize) HeapError!i64 {
         HeapError.MemoryNotAllocated;
 }
 
-pub fn set(idx: usize, value: i64, renderer: SDL.Renderer) !void {
+pub fn set(idx: usize, value: i64) !void {
     if (idx >= mem.len)
         return HeapError.OutOfRange;
     if (mem[idx].owner == Ownership.user) {
@@ -271,7 +271,6 @@ pub fn set(idx: usize, value: i64, renderer: SDL.Renderer) !void {
     //recreate texture of the batch containing the value.
     const owning_batch = batchOf(idx);
     try batches_to_update.put(owning_batch, {});
-    try initBatch(owning_batch, renderer);
 }
 
 pub fn allocate(idx: usize) HeapError!void {

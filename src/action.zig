@@ -39,7 +39,7 @@ pub fn perform(action: Action) Action {
             const undo: Action = .{
                 .set_value_heap = .{ .idx = data.idx, .value = heap.mem[data.idx].val },
             };
-            heap.set(data.idx, data.value, app.renderer) catch {};
+            heap.set(data.idx, data.value) catch {};
             return undo;
         },
         .allocate => |idx| {

@@ -64,7 +64,13 @@ pub fn main() !void {
     //heap.set(mem[4], 3);
     try app.start();
 }
-//TODO
+//TODO:
+//fix framedrops when holding fastforward key by:
+//1 - set a time space minimum for fastforwarding and undoing.
+//2 - save the textures needed to be made in a data structure instead of having to wain for a frame each time.
+//3 - if possible make a seperate renderer for the making of texture instead of using the main one (possibly best solution if the renderer can be made and used on the logic thread).
+//4 - only add the texture to the list of things to be drawn after its been created and then there is no need to wait.
+//
 //make a pointer (can only be allocated on the heap) with an arrow that points to the address
 //make pointer(^) arrows toggleable with a checkbox
 //make deinit/close functions for app, heap, stack an UI.
