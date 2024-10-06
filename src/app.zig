@@ -38,8 +38,6 @@ const tick_time = 1_000_000_000 / tick_rate; // time for logic update in ns
 var playback_speed: f128 = 1.0;
 var freecam = false;
 
-//TODO: move this function to a more apropriate file
-
 pub fn init() !void {
     if (initiallized) {
         std.debug.print("tried to initiallize app more than once!", .{});
@@ -172,7 +170,6 @@ pub fn start() !void {
     defer logic_thread.join();
     while (running) {
         const start_time = std.time.nanoTimestamp();
-        stack_internal.reciveTextureUpdateSignal();
         try drawFrame();
         const sleep_time: i128 = frame_time_nano - (std.time.nanoTimestamp() - start_time);
         if (sleep_time > 0) {

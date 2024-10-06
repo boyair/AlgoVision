@@ -15,8 +15,8 @@ pub fn init() !void {
     design.frame.texture = try SDLex.loadResource(app.exe_path, "/textures/ram.png", app.renderer);
 }
 //NOTE:
-//to solve the texture is null when drawing the mutex should lock before adding the method in the sending thread
-//and should be unlocked after drawing in the main thread
+//to solve the texture is null when drawing the mutex should lock before adding the method in the sending thread (X)!!
+//and should be unlocked after drawing in the main thread (V)
 //so that there is no possible timing where the method is added and draw to the screen
 //before its texture was created.
 var signal_count: u64 = 0;
@@ -25,20 +25,17 @@ var TextureUpdateMut = struct {
     condition: std.Thread.Condition,
     needs_update: bool,
 }{ .mutex = .{}, .condition = .{}, .needs_update = false };
-//functions to handle signaling the main thread to update the textures
+//function to handle signaling the main thread to update the textures
 fn sendTextureUpdateSignal() void {
-    TextureUpdateMut.mutex.lock();
-    defer TextureUpdateMut.mutex.unlock();
     TextureUpdateMut.needs_update = true;
     signal_count += 1;
     while (TextureUpdateMut.needs_update) {
-        std.debug.print("send signal {d}. waiting . . .\n", .{signal_count});
+        std.debug.print("sent signal {d}. waiting . . .\n", .{signal_count});
         TextureUpdateMut.condition.wait(&TextureUpdateMut.mutex);
     }
     std.debug.print("signal {d} was waited\n", .{signal_count});
 }
 
-pub fn reciveTextureUpdateSignal() void {}
 //-----------------------------------------------------------------------
 
 pub const Method = struct {
@@ -78,12 +75,16 @@ pub const Method = struct {
 };
 
 pub fn push(allocator: std.mem.Allocator, method: Method) void {
+    TextureUpdateMut.mutex.lock();
+    defer TextureUpdateMut.mutex.unlock();
     const node = allocator.create(std.DoublyLinkedList(Method).Node) catch unreachable;
     node.data = method;
     stack.append(node);
     sendTextureUpdateSignal();
 }
 pub fn pop(allocator: std.mem.Allocator) void {
+    TextureUpdateMut.mutex.lock();
+    defer TextureUpdateMut.mutex.unlock();
     if (stack.pop()) |last| {
         if (last.data.texture) |texture| {
             texture.destroy();
@@ -121,6 +122,8 @@ pub fn draw(renderer: SDL.Renderer, view: View) void {
 }
 
 pub fn evalTop(renderer: SDL.Renderer, value: i64) void {
+    TextureUpdateMut.mutex.lock();
+    defer TextureUpdateMut.mutex.unlock();
     _ = renderer;
     if (stack.last) |top| {
         _ = top;
@@ -130,6 +133,8 @@ pub fn evalTop(renderer: SDL.Renderer, value: i64) void {
 }
 
 pub fn forgetEval(renderer: SDL.Renderer) void {
+    TextureUpdateMut.mutex.lock();
+    defer TextureUpdateMut.mutex.unlock();
     _ = renderer;
     if (stack.last) |top| {
         _ = top;
