@@ -14,6 +14,22 @@ pub fn init(exe_path: []const u8, comptime font_path: []const u8, renderer: SDL.
     try freecam_element.updateTexture({});
     try freecam_checkbox.updateTexture(false);
 }
+pub fn deinit() void {
+    if (speed_element.texture) |texture| {
+        texture.destroy();
+    }
+    if (action_element.texture) |texture| {
+        texture.destroy();
+    }
+    if (freecam_element.texture) |texture| {
+        texture.destroy();
+    }
+    if (freecam_checkbox.texture) |texture| {
+        texture.destroy();
+    }
+    checkboxTextures.deinit();
+    Design.font.close();
+}
 fn uiElement(value_type: type, makeTexture: fn (value: value_type) SDL.Texture, eventHandle: ?fn (event: *const SDL.Event, data: *value_type) void) type {
     return struct {
         texture: ?SDL.Texture,
@@ -85,6 +101,10 @@ var checkboxTextures = struct {
     pub fn init(self: *@This(), exe_path: []const u8, renderer: SDL.Renderer) !void {
         self.enabled = try SDLex.loadResource(exe_path, "/textures/V.png", renderer);
         self.disabled = try SDLex.loadResource(exe_path, "/textures/X.png", renderer);
+    }
+    pub fn deinit(self: *@This()) void {
+        self.enabled.destroy();
+        self.disabled.destroy();
     }
 }{ .enabled = undefined, .disabled = undefined };
 

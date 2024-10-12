@@ -80,3 +80,4 @@ pub fn main() !void {
 //start working on sound
 //move logic to another thread to avoid framerate limitation (have a tickrate sepertae from framerate)
 //improve ui element for current action. add arrows for fastforward/ undo
+//improve api to make it look more like regular code and not like a new language

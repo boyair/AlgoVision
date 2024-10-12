@@ -44,6 +44,8 @@ pub var mem: [rows * columns]block = undefined;
 // a copy that is nodified on fuction calls from the user instead of by operation
 pub var mem_runtime: [rows * columns]block = undefined;
 var batches_to_update: std.AutoHashMap(idx2D, void) = undefined;
+const batch_size: SDL.Size = .{ .width = std.math.sqrt(rows), .height = std.math.sqrt(columns) };
+pub var batch_tex: [rows / batch_size.width + 1][columns / batch_size.height + 1]SDL.Texture = undefined; // textures of the numbers batched for performance
 
 pub fn init(renderer: SDL.Renderer, allocator: std.mem.Allocator) void {
     design.font = SDLex.loadResource(app.exe_path, "/ioveska.ttf", app.renderer) catch {
@@ -54,6 +56,16 @@ pub fn init(renderer: SDL.Renderer, allocator: std.mem.Allocator) void {
         @panic("failed to initiallize textures for the heap!");
     };
     batches_to_update = std.AutoHashMap(idx2D, void).init(allocator);
+}
+
+pub fn deinit() void {
+    design.font.close();
+    batches_to_update.deinit();
+    for (batch_tex) |batch_line| {
+        for (batch_line) |batch| {
+            batch.destroy();
+        }
+    }
 }
 
 //initiallize heap with random values in range 0 - 999;
@@ -95,8 +107,6 @@ fn initAvailability() void {
 //---------------------------------------------------
 //---------------------------------------------------
 
-const batch_size: SDL.Size = .{ .width = std.math.sqrt(rows), .height = std.math.sqrt(columns) };
-pub var batch_tex: [rows / batch_size.width + 1][columns / batch_size.height + 1]SDL.Texture = undefined; // textures of the numbers batched for performance
 pub fn initTextures(renderer: SDL.Renderer) !void {
     for (0..batch_tex.len) |row| {
         for (0..batch_tex[0].len) |column| {
@@ -212,6 +222,7 @@ pub fn destroyTextures() void {
 }
 
 pub fn draw(renderer: SDL.Renderer, view: View) void {
+    texture_update_mut.lock();
     //updates the batches that has changed
     if (batches_to_update.count() > 0) {
         var it = batches_to_update.keyIterator();
@@ -221,6 +232,7 @@ pub fn draw(renderer: SDL.Renderer, view: View) void {
         }
         batches_to_update.clearRetainingCapacity();
     }
+    texture_update_mut.unlock();
     //drawing
     for (0..batch_tex.len) |row| {
         for (0..batch_tex[0].len) |column| {
@@ -258,6 +270,12 @@ pub fn get(idx: usize) HeapError!i64 {
     else
         HeapError.MemoryNotAllocated;
 }
+var texture_update_mut: std.Thread.Mutex = .{};
+fn signalBatchUpdate(batch: idx2D) void {
+    texture_update_mut.lock();
+    batches_to_update.put(batch, {}) catch unreachable;
+    texture_update_mut.unlock();
+}
 
 pub fn set(idx: usize, value: i64) !void {
     if (idx >= mem.len)
@@ -269,8 +287,7 @@ pub fn set(idx: usize, value: i64) !void {
     }
 
     //recreate texture of the batch containing the value.
-    const owning_batch = batchOf(idx);
-    try batches_to_update.put(owning_batch, {});
+    signalBatchUpdate(batchOf(idx));
 }
 
 pub fn allocate(idx: usize) HeapError!void {
@@ -278,7 +295,7 @@ pub fn allocate(idx: usize) HeapError!void {
         return HeapError.MemoryNotAvailable;
     }
     mem[idx].owner = Ownership.user;
-    batches_to_update.put(batchOf(idx), {}) catch unreachable;
+    signalBatchUpdate(batchOf(idx));
 }
 
 //TODO make freeing set a garbage value to prevent reuse.
@@ -287,7 +304,7 @@ pub fn free(idx: usize) HeapError!void {
         return HeapError.MemoryNotAllocated;
     }
     mem[idx].owner = Ownership.free;
-    batches_to_update.put(batchOf(idx), {}) catch unreachable;
+    signalBatchUpdate(batchOf(idx));
 }
 
 //---------------------------------------------------

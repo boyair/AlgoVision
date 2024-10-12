@@ -34,6 +34,7 @@ var running_time: i128 = 0;
 var running: bool = true;
 const tick_rate = 200; // logic updates per seconds
 const tick_time = 1_000_000_000 / tick_rate; // time for logic update in ns
+var loading_screen_texture: SDL.Texture = undefined;
 
 var playback_speed: f128 = 1.0;
 var freecam = false;
@@ -67,9 +68,9 @@ pub fn init() !void {
     //init UI
     try UI.init(exe_path, "/3270.ttf", renderer);
     //loading screen
-    const loading_surf = try Design.UI.font.renderTextSolid("Loading...", SDL.Color.rgb(150, 150, 150));
-    const loading_tex = try SDL.createTextureFromSurface(renderer, loading_surf);
-    try renderer.copy(loading_tex, .{ .x = 0, .y = 200, .width = 1000, .height = 600 }, null);
+
+    loading_screen_texture = SDLex.textureFromText("Loading...", Design.UI.font, SDL.Color.rgb(150, 150, 150), renderer);
+    try renderer.copy(loading_screen_texture, .{ .x = 0, .y = 200, .width = 1000, .height = 600 }, null);
     renderer.present();
 
     //init heap
@@ -78,6 +79,17 @@ pub fn init() !void {
     //init stack
     try stack_internal.init();
     initiallized = true;
+}
+
+fn deinit() void {
+    renderer.destroy();
+    window.destroy();
+    operation_manager.deinit(Allocator.allocator());
+    UI.deinit();
+    loading_screen_texture.destroy();
+    heap_internal.deinit();
+
+    SDLex.fullyQuitSDL();
 }
 
 inline fn drawFrame() !void {
@@ -178,6 +190,7 @@ pub fn start() !void {
         const end_time = std.time.nanoTimestamp();
         std.time.sleep(@intCast(Design.frame_time - (start_time - end_time)));
     }
+    deinit();
 }
 
 //---------------------------------------------------

@@ -14,12 +14,18 @@ pub fn init() !void {
     design.method.bg = try SDLex.loadResource(app.exe_path, "/textures/method.png", app.renderer);
     design.frame.texture = try SDLex.loadResource(app.exe_path, "/textures/ram.png", app.renderer);
 }
-//NOTE:
-//to solve the texture is null when drawing the mutex should lock before adding the method in the sending thread (X)!!
-//and should be unlocked after drawing in the main thread (V)
-//so that there is no possible timing where the method is added and draw to the screen
-//before its texture was created.
-var signal_count: u64 = 0;
+pub fn deinit(allocator: std.mem.Allocator) void {
+    for (stack.pop()) |node| {
+        if (node.data.texture) |texture| {
+            texture.destroy();
+        }
+        allocator.destroy(node);
+    }
+    design.font.close();
+    design.method.bg.destroy();
+    design.frame.texture.destroy();
+}
+
 var TextureUpdateMut = struct {
     mutex: std.Thread.Mutex,
     condition: std.Thread.Condition,
@@ -28,12 +34,9 @@ var TextureUpdateMut = struct {
 //function to handle signaling the main thread to update the textures
 fn sendTextureUpdateSignal() void {
     TextureUpdateMut.needs_update = true;
-    signal_count += 1;
     while (TextureUpdateMut.needs_update) {
-        std.debug.print("sent signal {d}. waiting . . .\n", .{signal_count});
         TextureUpdateMut.condition.wait(&TextureUpdateMut.mutex);
     }
-    std.debug.print("signal {d} was waited\n", .{signal_count});
 }
 
 //-----------------------------------------------------------------------
@@ -98,7 +101,6 @@ pub fn draw(renderer: SDL.Renderer, view: View) void {
     TextureUpdateMut.mutex.lock();
     defer TextureUpdateMut.mutex.unlock();
     if (TextureUpdateMut.needs_update) {
-        std.debug.print("recived signal {d}. processing . . .\n", .{signal_count});
         if (stack.last) |top_method| {
             top_method.data.makeTexture(app.renderer) catch unreachable;
             TextureUpdateMut.needs_update = false;

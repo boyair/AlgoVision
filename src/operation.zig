@@ -44,6 +44,14 @@ pub const Manager = struct {
             .state = OperationState.animate,
         };
     }
+    pub fn deinit(self: *Manager, allocator: std.mem.Allocator) void {
+        while (self.operation_queue.pop()) |node| {
+            allocator.destroy(node);
+        }
+        while (self.undo_queue.pop()) |node| {
+            allocator.destroy(node);
+        }
+    }
 
     pub fn push(self: *Manager, allocator: std.mem.Allocator, operation: Operation) void {
         const node = allocator.create(std.DoublyLinkedList(Operation).Node) catch {
