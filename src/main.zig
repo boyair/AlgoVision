@@ -71,6 +71,7 @@ pub fn main() !void {
 //3 - if possible make a seperate renderer for the making of texture instead of using the main one (possibly best solution if the renderer can be made and used on the logic thread).
 //4 - only add the texture to the list of things to be drawn after its been created and then there is no need to wait.
 //
+
 //make a pointer (can only be allocated on the heap) with an arrow that points to the address
 //make pointer(^) arrows toggleable with a checkbox
 //start working on sound

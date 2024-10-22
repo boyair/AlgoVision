@@ -124,6 +124,12 @@ fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
     const last_target = renderer.getTarget();
     const last_color = try SDL.Renderer.getColor(renderer);
 
+    defer renderer.setColor(last_color) catch {
+        @panic("could not  set renderer color");
+    };
+    defer renderer.setTarget(last_target) catch {
+        @panic("could not  set renderer target");
+    };
     //initiallize texture to draw on
     batch_tex[index.y][index.x] =
         try SDL.createTexture(renderer, SDL.Texture.Format.rgba8888, .target, design.block.full_size.width * batch_size.width, design.block.full_size.height * batch_size.height);
@@ -143,23 +149,14 @@ fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
 
             const num_str = std.fmt.bufPrintZ(&text_buffer, "{d:>5}", .{mem[idx1].val}) catch "???";
             // color tuning
-            const color_fg: SDL.Color = switch (mem[idx1].owner) {
-                .free => design.block.free.fg,
-                .taken => design.block.taken.fg,
-                .user => design.block.user.fg,
-            };
-            const color_bg: SDL.Color = switch (mem[idx1].owner) {
-                .free => design.block.free.bg,
-                .taken => design.block.taken.bg,
-                .user => design.block.user.bg,
-            };
+            const colors = getColors(idx1);
 
-            const texture = SDLex.textureFromText(num_str, design.font, color_fg, renderer);
+            const texture = SDLex.textureFromText(num_str, design.font, colors.fg, renderer);
             var block_rect = SDLex.convertSDLRect(blockRect(idx1));
             block_rect.x -= @as(c_int, @intCast(index.x * batch_size.width * design.block.full_size.width)) + design.position.x;
             block_rect.y -= @as(c_int, @intCast(index.y * batch_size.height * design.block.full_size.height)) + design.position.y;
 
-            try renderer.setColor(color_bg);
+            try renderer.setColor(colors.bg);
             try renderer.fillRect(block_rect);
             block_rect.x += design.block.padding.width / 2;
             block_rect.y += design.block.padding.height / 2;
@@ -208,13 +205,11 @@ fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
         if (rect.x < chunck_limit_width)
             try renderer.fillRect(rect);
     }
-    try renderer.setColor(last_color);
-    try renderer.setTarget(last_target);
 }
 
-//TODO: make padding work when using this function.
 fn updateValue(index: idx2D, renderer: SDL.Renderer) !void {
     var text_buffer: [12]u8 = undefined;
+    const colors = getColors(index.to1D(columns));
     const last_target = renderer.getTarget();
     const last_color = try SDL.Renderer.getColor(renderer);
     defer renderer.setColor(last_color) catch {
@@ -227,27 +222,19 @@ fn updateValue(index: idx2D, renderer: SDL.Renderer) !void {
     //std.debug.print("num_str: {s}\n", .{num_str});
     const owning_batch = batchOf(index.to1D(columns));
     const owning_batch_texture = batch_tex[owning_batch.y][owning_batch.x];
+    try renderer.setTarget(owning_batch_texture);
+    try renderer.setColor(colors.bg);
     var block_rect = SDLex.convertSDLRect(blockRect(index.to1D(columns)));
+
+    //make the block rect fit exactly in place without covering the padding.
     block_rect.width -= design.block.padding.width / 2;
     block_rect.height -= design.block.padding.height / 2;
     block_rect.x -= @as(c_int, @intCast(owning_batch.x * batch_size.width * design.block.full_size.width)) + design.position.x;
-    block_rect.x += design.block.padding.width / 4;
     block_rect.y -= @as(c_int, @intCast(owning_batch.y * batch_size.height * design.block.full_size.height)) + design.position.y;
+    block_rect.x += design.block.padding.width / 4;
     block_rect.y += design.block.padding.height / 4;
-    std.debug.print("block rect: {d}, {d}, {d}, {d}\n", block_rect);
-    try renderer.setTarget(owning_batch_texture);
-    const color_fg: SDL.Color = switch (mem[index.to1D(columns)].owner) {
-        .free => design.block.free.fg,
-        .taken => design.block.taken.fg,
-        .user => design.block.user.fg,
-    };
-    const color_bg: SDL.Color = switch (mem[index.to1D(columns)].owner) {
-        .free => design.block.free.bg,
-        .taken => design.block.taken.bg,
-        .user => design.block.user.bg,
-    };
-    const texture = SDLex.textureFromText(num_str, design.font, color_fg, renderer);
-    try renderer.setColor(color_bg);
+
+    const texture = SDLex.textureFromText(num_str, design.font, colors.fg, renderer);
     try renderer.fillRect(block_rect);
     try renderer.copy(texture, block_rect, null);
     texture.destroy();
@@ -375,6 +362,13 @@ fn randomNum(seed: i64) i64 {
     const state: i64 = seed * 747796405 + 2891336453;
     const word: i64 = ((state >> @as(u6, @truncate(@as(u64, @intCast(state)) >> 28)) +% 4) ^ state) *% 277803737;
     return (word >> 22) ^ word;
+}
+fn getColors(idx: usize) design.block.Colors {
+    return switch (mem[idx].owner) {
+        .free => design.block.free,
+        .taken => design.block.taken,
+        .user => design.block.user,
+    };
 }
 
 pub fn findFreeRange(size: usize) HeapError!struct { start: usize, end: usize } {

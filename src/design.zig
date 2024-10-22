@@ -13,20 +13,14 @@ pub const heap = struct {
         pub const padding: SDL.Size = .{ .width = 12, .height = 12 };
         pub const full_size: SDL.Size = .{ .width = size.width + padding.width, .height = size.height + padding.height };
         pub const grid_color: SDL.Color = SDL.Color.black;
-
-        pub const free = struct {
-            pub const fg: SDL.Color = SDL.Color.green;
-            pub const bg: SDL.Color = SDL.Color.white;
+        pub const Colors = struct {
+            fg: SDL.Color,
+            bg: SDL.Color,
         };
 
-        pub const taken = struct {
-            pub const fg: SDL.Color = SDL.Color.red;
-            pub const bg: SDL.Color = SDL.Color.black;
-        };
-        pub const user = struct {
-            pub const fg: SDL.Color = SDL.Color.red;
-            pub const bg: SDL.Color = SDL.Color.blue;
-        };
+        pub const free = Colors{ .fg = SDL.Color.green, .bg = SDL.Color.white };
+        pub const taken = Colors{ .fg = SDL.Color.red, .bg = SDL.Color.black };
+        pub const user = Colors{ .fg = SDL.Color.red, .bg = SDL.Color.blue };
     };
     pub const position: SDL.Point = .{ .x = -100, .y = -300 };
 };
