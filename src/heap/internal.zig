@@ -182,11 +182,11 @@ fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
         };
 
         //prevent grid drawing on empty texture
-        const chunck_limit_width = max_width - batch_size.width * design.block.full_size.width * index.x;
-        const chunck_limit_height = max_height - batch_size.height * design.block.full_size.height * index.y;
-        rect.width = @intCast(@min(chunck_limit_width, @as(usize, @intCast(rect.width))));
+        const batch_limit_width = max_width - batch_size.width * design.block.full_size.width * index.x;
+        const batch_limit_height = max_height - batch_size.height * design.block.full_size.height * index.y;
+        rect.width = @intCast(@min(batch_limit_width, @as(usize, @intCast(rect.width))));
 
-        if (chunck_limit_height > rect.y)
+        if (batch_limit_height > rect.y)
             try renderer.fillRect(rect);
     }
 
@@ -198,11 +198,11 @@ fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
             .width = design.block.padding.width / 2,
         };
         //prevent grid drawing on empty texture
-        const chunck_limit_width = max_width - batch_size.width * design.block.full_size.width * index.x;
-        const chunck_limit_height = max_height - batch_size.height * design.block.full_size.height * index.y;
-        rect.height = @intCast(@min(chunck_limit_height, @as(usize, @intCast(rect.height))));
+        const batch_limit_width = max_width - batch_size.width * design.block.full_size.width * index.x;
+        const batch_limit_height = max_height - batch_size.height * design.block.full_size.height * index.y;
+        rect.height = @intCast(@min(batch_limit_height, @as(usize, @intCast(rect.height))));
 
-        if (rect.x < chunck_limit_width)
+        if (rect.x < batch_limit_width)
             try renderer.fillRect(rect);
     }
 }
@@ -286,7 +286,7 @@ pub fn drawBatch(idx: idx2D, renderer: SDL.Renderer, view: View) void {
         .height = @floatFromInt((design.block.full_size.height) * batch_size.height),
     };
     var converted_rect = SDLex.convertSDLRect(view.convert(batch_rect) catch return);
-    //simple trick to prevent 1 pixel gaps between chuncks
+    //simple trick to prevent 1 pixel gaps between batches
     converted_rect.width += 1;
     converted_rect.height += 1;
     renderer.copy(batch_tex[idx.y][idx.x], converted_rect, null) catch unreachable;

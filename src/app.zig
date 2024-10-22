@@ -48,7 +48,6 @@ pub fn init() !void {
     //  init basics
     try SDLex.fullyInitSDL();
     const display_info = SDL.DisplayMode.getDesktopInfo(0) catch unreachable;
-    std.debug.print("screen resolution: {d}, {d}\n", .{ display_info.w, display_info.h });
 
     window = try SDL.createWindow("Application", .{ .centered = {} }, .{ .centered = {} }, @intCast(display_info.w), @intCast(display_info.h), .{ .vis = .shown, .resizable = false, .borderless = true, .mouse_capture = true });
     renderer = try SDL.createRenderer(window, null, .{ .accelerated = true });
@@ -88,6 +87,7 @@ fn deinit() void {
     UI.deinit();
     loading_screen_texture.destroy();
     heap_internal.deinit();
+    Allocator.deinit();
 
     SDLex.fullyQuitSDL();
 }

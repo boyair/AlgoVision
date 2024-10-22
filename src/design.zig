@@ -29,7 +29,7 @@ pub const UI = struct {
     //defined in UI init function
     pub var font: SDL.ttf.Font = undefined;
 
-    pub const bg = SDL.Color.rgb(100, 100, 100);
+    pub const bg = SDL.Color.black;
     pub const width_portion = 0.25; // the part of the screen dedicated for the ui
 
     //defined in app init function based on screen resolution and width_portion
@@ -41,24 +41,24 @@ pub const UI = struct {
         bg: SDL.Color,
     };
     pub var speed = element{
-        .rect = .{ .x = 0, .y = 0, .width = 400, .height = 100 },
+        .rect = .{ .x = 20, .y = 0, .width = 350, .height = 75 },
         .fg = SDL.Color.white,
-        .bg = SDL.Color.rgba(0, 0, 0, 255),
+        .bg = SDL.Color.rgba(0, 0, 0, 0),
     };
     pub var action = element{
-        .rect = .{ .x = 0, .y = 200, .width = 400, .height = 100 },
-        .fg = SDL.Color.rgb(200, 200, 0),
-        .bg = SDL.Color.rgba(0, 0, 0, 255),
+        .rect = .{ .x = 20, .y = 100, .width = 350, .height = 75 },
+        .fg = SDL.Color.white,
+        .bg = SDL.Color.rgba(0, 0, 0, 0),
     };
     pub var freecam = element{
-        .rect = .{ .x = 80, .y = 400, .width = 400, .height = 100 },
-        .fg = SDL.Color.cyan,
-        .bg = SDL.Color.rgba(0, 0, 0, 255),
+        .rect = .{ .x = 100, .y = 200, .width = 200, .height = 65 },
+        .fg = SDL.Color.white,
+        .bg = SDL.Color.rgba(0, 0, 0, 0),
     };
     pub var CBfreecam = element{
-        .rect = .{ .x = 0, .y = 415, .width = 70, .height = 70 },
-        .fg = SDL.Color.cyan,
-        .bg = SDL.Color.rgba(0, 0, 0, 255),
+        .rect = .{ .x = 25, .y = 210, .width = 45, .height = 45 },
+        .fg = SDL.Color.white,
+        .bg = SDL.Color.rgba(0, 0, 0, 0),
     };
 };
 
