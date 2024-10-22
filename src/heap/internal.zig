@@ -44,6 +44,8 @@ pub var mem: [rows * columns]block = undefined;
 // a copy that is nodified on fuction calls from the user instead of by operation
 pub var mem_runtime: [rows * columns]block = undefined;
 var batches_to_update: std.AutoHashMap(idx2D, void) = undefined;
+var values_to_update: std.AutoHashMap(idx2D, void) = undefined;
+
 const batch_size: SDL.Size = .{ .width = std.math.sqrt(rows), .height = std.math.sqrt(columns) };
 pub var batch_tex: [rows / batch_size.width + 1][columns / batch_size.height + 1]SDL.Texture = undefined; // textures of the numbers batched for performance
 
@@ -56,6 +58,7 @@ pub fn init(renderer: SDL.Renderer, allocator: std.mem.Allocator) void {
         @panic("failed to initiallize textures for the heap!");
     };
     batches_to_update = std.AutoHashMap(idx2D, void).init(allocator);
+    values_to_update = std.AutoHashMap(idx2D, void).init(allocator);
 }
 
 pub fn deinit() void {
@@ -118,9 +121,10 @@ pub fn initTextures(renderer: SDL.Renderer) !void {
 fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
     //make buffers for texture creation.
     var text_buffer: [12]u8 = undefined;
+    const last_target = renderer.getTarget();
+    const last_color = try SDL.Renderer.getColor(renderer);
 
     //initiallize texture to draw on
-    const last_target = renderer.getTarget();
     batch_tex[index.y][index.x] =
         try SDL.createTexture(renderer, SDL.Texture.Format.rgba8888, .target, design.block.full_size.width * batch_size.width, design.block.full_size.height * batch_size.height);
     try batch_tex[index.y][index.x].setBlendMode(SDL.BlendMode.blend);
@@ -128,8 +132,6 @@ fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
 
     //memory section to use based on batch_index
     const mem_start: idx2D = .{ .x = @intCast(batch_size.width * index.x), .y = @intCast(batch_size.height * index.y) };
-
-    const last_color = try SDL.Renderer.getColor(renderer);
 
     for (mem_start.y..mem_start.y + batch_size.height) |row| {
         for (mem_start.x..mem_start.x + batch_size.width) |column| {
@@ -151,8 +153,6 @@ fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
                 .taken => design.block.taken.bg,
                 .user => design.block.user.bg,
             };
-
-            //TODO: change this section to call SDLex.textureFromText instead
 
             const texture = SDLex.textureFromText(num_str, design.font, color_fg, renderer);
             var block_rect = SDLex.convertSDLRect(blockRect(idx1));
@@ -212,6 +212,47 @@ fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
     try renderer.setTarget(last_target);
 }
 
+//TODO: make padding work when using this function.
+fn updateValue(index: idx2D, renderer: SDL.Renderer) !void {
+    var text_buffer: [12]u8 = undefined;
+    const last_target = renderer.getTarget();
+    const last_color = try SDL.Renderer.getColor(renderer);
+    defer renderer.setColor(last_color) catch {
+        @panic("could not  set renderer color");
+    };
+    defer renderer.setTarget(last_target) catch {
+        @panic("could not  set renderer target");
+    };
+    const num_str = std.fmt.bufPrintZ(&text_buffer, "{d:>5}", .{mem[index.to1D(columns)].val}) catch "???";
+    //std.debug.print("num_str: {s}\n", .{num_str});
+    const owning_batch = batchOf(index.to1D(columns));
+    const owning_batch_texture = batch_tex[owning_batch.y][owning_batch.x];
+    var block_rect = SDLex.convertSDLRect(blockRect(index.to1D(columns)));
+    block_rect.width -= design.block.padding.width / 2;
+    block_rect.height -= design.block.padding.height / 2;
+    block_rect.x -= @as(c_int, @intCast(owning_batch.x * batch_size.width * design.block.full_size.width)) + design.position.x;
+    block_rect.x += design.block.padding.width / 4;
+    block_rect.y -= @as(c_int, @intCast(owning_batch.y * batch_size.height * design.block.full_size.height)) + design.position.y;
+    block_rect.y += design.block.padding.height / 4;
+    std.debug.print("block rect: {d}, {d}, {d}, {d}\n", block_rect);
+    try renderer.setTarget(owning_batch_texture);
+    const color_fg: SDL.Color = switch (mem[index.to1D(columns)].owner) {
+        .free => design.block.free.fg,
+        .taken => design.block.taken.fg,
+        .user => design.block.user.fg,
+    };
+    const color_bg: SDL.Color = switch (mem[index.to1D(columns)].owner) {
+        .free => design.block.free.bg,
+        .taken => design.block.taken.bg,
+        .user => design.block.user.bg,
+    };
+    const texture = SDLex.textureFromText(num_str, design.font, color_fg, renderer);
+    try renderer.setColor(color_bg);
+    try renderer.fillRect(block_rect);
+    try renderer.copy(texture, block_rect, null);
+    texture.destroy();
+}
+
 pub fn destroyTextures() void {
     for (batch_tex) |row| {
         for (row) |column| {
@@ -231,6 +272,15 @@ pub fn draw(renderer: SDL.Renderer, view: View) void {
             initBatch(batch.*, renderer) catch unreachable;
         }
         batches_to_update.clearRetainingCapacity();
+    }
+    texture_update_mut.unlock();
+    texture_update_mut.lock();
+    if (values_to_update.count() > 0) {
+        var it = values_to_update.keyIterator();
+        while (it.next()) |batch| {
+            updateValue(batch.*, renderer) catch unreachable;
+        }
+        values_to_update.clearRetainingCapacity();
     }
     texture_update_mut.unlock();
     //drawing
@@ -273,7 +323,16 @@ pub fn get(idx: usize) HeapError!i64 {
 var texture_update_mut: std.Thread.Mutex = .{};
 fn signalBatchUpdate(batch: idx2D) void {
     texture_update_mut.lock();
-    batches_to_update.put(batch, {}) catch unreachable;
+    if (batches_to_update.get(batch) == null) {
+        batches_to_update.put(batch, {}) catch unreachable;
+    }
+    texture_update_mut.unlock();
+}
+fn signalValueUpdate(val: idx2D) void {
+    texture_update_mut.lock();
+    if (values_to_update.get(val) == null) {
+        values_to_update.put(val, {}) catch unreachable;
+    }
     texture_update_mut.unlock();
 }
 
@@ -287,7 +346,7 @@ pub fn set(idx: usize, value: i64) !void {
     }
 
     //recreate texture of the batch containing the value.
-    signalBatchUpdate(batchOf(idx));
+    signalValueUpdate(idx2D.init(idx, columns));
 }
 
 pub fn allocate(idx: usize) HeapError!void {
@@ -295,7 +354,7 @@ pub fn allocate(idx: usize) HeapError!void {
         return HeapError.MemoryNotAvailable;
     }
     mem[idx].owner = Ownership.user;
-    signalBatchUpdate(batchOf(idx));
+    signalValueUpdate(idx2D.init(idx, columns));
 }
 
 //TODO make freeing set a garbage value to prevent reuse.
@@ -304,7 +363,7 @@ pub fn free(idx: usize) HeapError!void {
         return HeapError.MemoryNotAllocated;
     }
     mem[idx].owner = Ownership.free;
-    signalBatchUpdate(batchOf(idx));
+    signalValueUpdate(idx2D.init(idx, columns));
 }
 
 //---------------------------------------------------

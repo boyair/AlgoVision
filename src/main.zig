@@ -50,7 +50,7 @@ fn fib(num: []i64) i64 {
 //FIB with CAHCE!!
 pub fn main() !void {
     try app.init();
-    const fib_num = 7;
+    const fib_num = 14;
     var num: [1]i64 = .{fib_num};
     mem = app.heap.allocate(gpa.allocator(), fib_num);
 
