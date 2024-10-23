@@ -64,6 +64,7 @@ pub fn main() !void {
     //heap.set(mem[4], 3);
     try app.start();
 }
+
 //TODO:
 // refine UI to look better
 // give seperate names to actionsin UI

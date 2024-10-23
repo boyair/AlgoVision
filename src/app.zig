@@ -37,7 +37,7 @@ const tick_time = 1_000_000_000 / tick_rate; // time for logic update in ns
 var loading_screen_texture: SDL.Texture = undefined;
 
 var playback_speed: f128 = 1.0;
-var freecam = false;
+pub var freecam = false;
 
 pub fn init() !void {
     if (initiallized) {
@@ -101,6 +101,8 @@ inline fn drawFrame() !void {
     UI.speed_element.draw(playback_speed);
     UI.freecam_element.draw({});
     UI.freecam_checkbox.draw(freecam);
+    UI.action_back.draw(false);
+    UI.action_forward.draw(true);
     if (operation_manager.current_operation) |operation| {
         UI.action_element.draw(operation.data.action);
     }
@@ -157,6 +159,11 @@ fn tickUpdate(last_iteration_time: i128) !void {
         UI.speed_element.handleEvent(&ev, mouse_pos, &playback_speed);
         //UI.freecam_element.handleEvent(&ev, mouse_pos, &freecam);
         UI.freecam_checkbox.handleEvent(&ev, mouse_pos, &freecam);
+        //simple var booleans i can pass as a parameter to the action arrows
+        var always_false = false;
+        var always_true = true;
+        UI.action_back.handleEvent(&ev, mouse_pos, &always_false);
+        UI.action_forward.handleEvent(&ev, mouse_pos, &always_true);
     }
 }
 fn runLogic() void {

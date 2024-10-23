@@ -37,29 +37,29 @@ pub const UI = struct {
 
     pub const element = struct {
         rect: SDL.Rectangle,
-        fg: SDL.Color,
-        bg: SDL.Color,
+        color: SDL.Color,
     };
-    pub var speed = element{
+    pub const speed = element{
         .rect = .{ .x = 20, .y = 0, .width = 350, .height = 75 },
-        .fg = SDL.Color.white,
-        .bg = SDL.Color.rgba(0, 0, 0, 0),
+        .color = SDL.Color.white,
     };
-    pub var action = element{
+    pub const action = element{
         .rect = .{ .x = 20, .y = 100, .width = 350, .height = 75 },
-        .fg = SDL.Color.white,
-        .bg = SDL.Color.rgba(0, 0, 0, 0),
+        .color = SDL.Color.white,
     };
-    pub var freecam = element{
+    pub const action_arrow_forward = element{
+        .rect = .{ .x = 370, .y = 100, .width = 20, .height = 75 },
+        .color = SDL.Color.green,
+    };
+    pub const action_arrow_back = element{
+        .rect = .{ .x = 0, .y = 100, .width = 20, .height = 75 },
+        .color = SDL.Color.green,
+    };
+    pub const freecam = element{
         .rect = .{ .x = 100, .y = 200, .width = 200, .height = 65 },
-        .fg = SDL.Color.white,
-        .bg = SDL.Color.rgba(0, 0, 0, 0),
+        .color = SDL.Color.white,
     };
-    pub var CBfreecam = element{
-        .rect = .{ .x = 25, .y = 210, .width = 45, .height = 45 },
-        .fg = SDL.Color.white,
-        .bg = SDL.Color.rgba(0, 0, 0, 0),
-    };
+    pub var CBfreecam = SDL.Rectangle{ .x = 25, .y = 210, .width = 45, .height = 45 };
 };
 
 pub const stack = struct {
