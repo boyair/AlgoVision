@@ -66,9 +66,7 @@ pub fn main() !void {
 }
 
 //TODO:
-// refine UI to look better
 // give seperate names to actionsin UI
-// add forward and back buttons (with arrw texture) next to action name element.
 // add a close button to UI
 // try to fix occacional crushes when interacting with the stack
 //make a pointer (can only be allocated on the heap) with an arrow that points to the address

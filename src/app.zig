@@ -30,12 +30,10 @@ pub var renderer: SDL.Renderer = undefined;
 pub var cam_view: View = undefined;
 var initiallized = false;
 var state: State = State.heap;
-var running_time: i128 = 0;
 var running: bool = true;
 const tick_rate = 200; // logic updates per seconds
 const tick_time = 1_000_000_000 / tick_rate; // time for logic update in ns
 var loading_screen_texture: SDL.Texture = undefined;
-
 var playback_speed: f128 = 1.0;
 pub var freecam = false;
 
@@ -92,12 +90,13 @@ fn deinit() void {
     SDLex.fullyQuitSDL();
 }
 
-inline fn drawFrame() !void {
-    try renderer.clear();
+fn drawFrame(iteration_time: i128) void {
+    _ = iteration_time;
+    renderer.clear() catch unreachable;
     heap_internal.draw(renderer, cam_view);
     stack_internal.draw(renderer, cam_view);
 
-    try UI.drawBG();
+    UI.drawBG() catch unreachable;
     UI.speed_element.draw(playback_speed);
     UI.freecam_element.draw({});
     UI.freecam_checkbox.draw(freecam);
@@ -110,7 +109,7 @@ inline fn drawFrame() !void {
     renderer.present();
 }
 
-fn tickUpdate(last_iteration_time: i128) !void {
+fn tickUpdate(last_iteration_time: i128) void {
     operation_manager.update(last_iteration_time, !freecam);
     const mouse_state = SDL.getMouseState();
     const mouse_pos: SDL.Point = .{ .x = mouse_state.x, .y = mouse_state.y };
@@ -167,36 +166,27 @@ fn tickUpdate(last_iteration_time: i128) !void {
     }
 }
 fn runLogic() void {
+    repeatTimed(tickUpdate, tick_time);
+}
+
+fn repeatTimed(func: fn (i128) void, iterationTime: i128) void {
     var last_iteration_time: i128 = 0;
     while (running) {
         const start_time = std.time.nanoTimestamp();
-        last_iteration_time = @intFromFloat(@as(f128, @floatFromInt(last_iteration_time)) * playback_speed);
-        try tickUpdate(last_iteration_time);
-
-        const sleep_time: i128 = frame_time_nano - (std.time.nanoTimestamp() - start_time);
+        func(last_iteration_time);
+        const sleep_time: i128 = iterationTime - (std.time.nanoTimestamp() - start_time);
         if (sleep_time > 0) {
             std.time.sleep(@intCast(sleep_time));
         }
         const end_time = std.time.nanoTimestamp();
-        std.time.sleep(@intCast(tick_time - (start_time - end_time)));
         last_iteration_time = end_time - start_time;
-        running_time += last_iteration_time;
     }
 }
 
 pub fn start() !void {
     const logic_thread = try std.Thread.spawn(.{}, runLogic, .{});
     defer logic_thread.join();
-    while (running) {
-        const start_time = std.time.nanoTimestamp();
-        try drawFrame();
-        const sleep_time: i128 = frame_time_nano - (std.time.nanoTimestamp() - start_time);
-        if (sleep_time > 0) {
-            std.time.sleep(@intCast(sleep_time));
-        }
-        const end_time = std.time.nanoTimestamp();
-        std.time.sleep(@intCast(Design.frame_time - (start_time - end_time)));
-    }
+    repeatTimed(drawFrame, frame_time_nano);
     deinit();
 }
 

@@ -1,7 +1,7 @@
 const SDL = @import("sdl2");
-const App = @import("app.zig");
 const SDLex = @import("SDLex.zig");
 const std = @import("std");
+const App = @import("app.zig");
 const Action = @import("action.zig");
 const Design = @import("design.zig").UI;
 var owner_renderer: SDL.Renderer = undefined;
@@ -140,9 +140,27 @@ pub fn scrollForSpeed(event: *const SDL.Event, data: *f128) void {
 }
 
 pub var action_element = textElement(Action.actions, printAction, null, Design.action.color).init(Action.actions.none, Design.action.rect).element;
+//returns an appropriate name for each action to be displayed.
+fn actionNames(action: Action.actions) []const u8 {
+    return switch (action) {
+        .set_value_heap => "Set value",
+        .search => "Search",
+        .allocate => "Allocate",
+        .free => "Free",
+        .print => "Print",
+        .call => "Call",
+        .eval_function => "Evaluate",
+        .forget_eval => "Forget",
+        .stack_pop => "Pop",
+        .stack_unpop => "Push",
+        .none => "None",
+    };
+}
+
 fn printAction(buf: []u8, action: Action.actions) [:0]const u8 {
+    //_ = action;
     var full_text_buf: [40]u8 = undefined;
-    const full_text = std.fmt.bufPrintZ(&full_text_buf, "action: {s}", .{@tagName(action)}) catch unreachable;
+    const full_text = std.fmt.bufPrintZ(&full_text_buf, "action: {s}", .{actionNames(action)}) catch unreachable;
     return std.fmt.bufPrintZ(buf, "{s:^24}", .{full_text}) catch unreachable;
 }
 pub const action_arrow = textElement(bool, printArrow, actionArrow, Design.action_arrow_back.color);
