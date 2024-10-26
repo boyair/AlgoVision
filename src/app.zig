@@ -78,6 +78,13 @@ pub fn init() !void {
     initiallized = true;
 }
 
+pub fn start() !void {
+    defer deinit();
+    const logic_thread = try std.Thread.spawn(.{}, runLogic, .{});
+    defer logic_thread.join();
+    repeatTimed(drawFrame, frame_time_nano);
+}
+
 fn deinit() void {
     renderer.destroy();
     window.destroy();
@@ -165,9 +172,12 @@ fn tickUpdate(last_iteration_time: i128) void {
         UI.action_forward.handleEvent(&ev, mouse_pos, &always_true);
     }
 }
-fn runLogic() void {
-    repeatTimed(tickUpdate, tick_time);
-}
+
+//---------------------------------------------------
+//---------------------------------------------------
+//----------------------HELPERS----------------------
+//---------------------------------------------------
+//---------------------------------------------------
 
 fn repeatTimed(func: fn (i128) void, iterationTime: i128) void {
     var last_iteration_time: i128 = 0;
@@ -182,14 +192,9 @@ fn repeatTimed(func: fn (i128) void, iterationTime: i128) void {
         last_iteration_time = end_time - start_time;
     }
 }
-
-pub fn start() !void {
-    const logic_thread = try std.Thread.spawn(.{}, runLogic, .{});
-    defer logic_thread.join();
-    repeatTimed(drawFrame, frame_time_nano);
-    deinit();
+fn runLogic() void {
+    repeatTimed(tickUpdate, tick_time);
 }
-
 //---------------------------------------------------
 //---------------------------------------------------
 //-----------------APP INTERFACE---------------------

@@ -28,7 +28,7 @@ pub const Action = union(actions) {
     eval_function: i64,
     forget_eval: void,
     stack_pop: void,
-    stack_unpop: struct { eval: i64, method: stack.Method },
+    stack_unpop: struct { eval: i64, method: stack.Method }, // undoing the pop action requires both pushing it back and evaluate
     none: void,
 };
 

@@ -33,8 +33,9 @@ pub const Manager = struct {
     animation_state: Animation.ZoomAnimation, // a copy of current animation to not affect the animation directly.
     time_paused: i128,
     state: OperationState,
+    const This = @This();
 
-    pub fn init() Manager {
+    pub fn init() This {
         return .{
             .operation_queue = std.DoublyLinkedList(Operation){},
             .undo_queue = std.DoublyLinkedList(Action.Action){},
@@ -44,7 +45,7 @@ pub const Manager = struct {
             .state = OperationState.animate,
         };
     }
-    pub fn deinit(self: *Manager, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: *This, allocator: std.mem.Allocator) void {
         while (self.operation_queue.pop()) |node| {
             allocator.destroy(node);
         }
@@ -53,7 +54,7 @@ pub const Manager = struct {
         }
     }
 
-    pub fn push(self: *Manager, allocator: std.mem.Allocator, operation: Operation) void {
+    pub fn push(self: *This, allocator: std.mem.Allocator, operation: Operation) void {
         const node = allocator.create(std.DoublyLinkedList(Operation).Node) catch {
             @panic("could not allocate memory for operation.");
         };
@@ -70,7 +71,7 @@ pub const Manager = struct {
         }
     }
 
-    pub fn update(self: *Manager, delta_time: i128, animate: bool) void {
+    pub fn update(self: *This, delta_time: i128, animate: bool) void {
         if (self.current_operation) |current_operation| {
             switch (self.state) {
                 .animate => {
@@ -114,7 +115,7 @@ pub const Manager = struct {
         }
     }
 
-    pub fn undoLast(self: *Manager) void {
+    pub fn undoLast(self: *This) void {
         const current_performed = @intFromEnum(self.state) > @intFromEnum(OperationState.act);
         //find last operation (if not found return)
         const last_performed = blk: {
@@ -133,8 +134,12 @@ pub const Manager = struct {
         //move current_operation pointer one operation back
         self.current_operation = last_performed;
         self.resetState();
+        //recall self recursively if action has no duration.
+        //used to prevent undoing being impossible for thing like printing which dosent take time.
+        if (self.current_operation.?.data.animation.total_duration == 0 and self.current_operation.?.data.pause_time_nano == 0)
+            self.undoLast();
     }
-    fn resetState(self: *Manager) void {
+    fn resetState(self: *This) void {
         if (self.current_operation == null)
             return;
         const current_view =
@@ -143,7 +148,7 @@ pub const Manager = struct {
         self.state = OperationState.animate;
         self.animation_state.start_state = current_view;
     }
-    pub fn fastForward(self: *Manager) void {
+    pub fn fastForward(self: *This) void {
         if (self.current_operation == null)
             return;
         const current_performed = @intFromEnum(self.state) > @intFromEnum(OperationState.act);

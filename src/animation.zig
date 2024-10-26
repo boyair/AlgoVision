@@ -18,10 +18,6 @@ pub const ZoomAnimation = struct {
             .view = view,
         };
     }
-    pub fn isDone(self: *ZoomAnimation) bool {
-        self.done = self.done or self.passed_duration >= self.total_duration;
-        return self.done;
-    }
     pub fn update(self: *ZoomAnimation, time_delta: i128) void {
         defer if (self.view.keepInLimits()) {
             self.done = true;
@@ -40,5 +36,9 @@ pub const ZoomAnimation = struct {
             .width = @floatCast((self.end_state.width - self.start_state.width) * fraction_passed + self.start_state.width),
             .height = @floatCast((self.end_state.height - self.start_state.height) * fraction_passed + self.start_state.height),
         };
+    }
+    pub fn isDone(self: *ZoomAnimation) bool {
+        self.done = self.done or self.passed_duration >= self.total_duration;
+        return self.done;
     }
 };
