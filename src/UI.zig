@@ -5,35 +5,35 @@ const App = @import("app.zig");
 const Action = @import("action.zig");
 const Design = @import("design.zig").UI;
 var owner_renderer: SDL.Renderer = undefined;
+pub var elements = .{ &speed_element, &action_element, &freecam_element, &freecam_checkbox, &exit_button, &action_back, &action_forward };
+
+//---------------------------------------------------
+//---------------------------------------------------
+//------------------INITIALIZATION-------------------
+//---------------------------------------------------
+//---------------------------------------------------
 
 pub fn init(exe_path: []const u8, comptime font_path: []const u8, renderer: SDL.Renderer) !void {
     Design.font = SDLex.loadResource(exe_path, font_path, renderer) catch unreachable;
     owner_renderer = renderer;
     try checkboxTextures.init(exe_path, renderer);
-    try exit_button.updateTexture(true);
-    try speed_element.updateTexture(1.0);
-    try action_element.updateTexture(Action.actions.none);
-    try action_back.updateTexture(false);
-    try action_forward.updateTexture(true);
-    try freecam_element.updateTexture({});
-    try freecam_checkbox.updateTexture(false);
 }
 pub fn deinit() void {
-    if (speed_element.texture) |texture| {
-        texture.destroy();
-    }
-    if (action_element.texture) |texture| {
-        texture.destroy();
-    }
-    if (freecam_element.texture) |texture| {
-        texture.destroy();
-    }
-    if (freecam_checkbox.texture) |texture| {
-        texture.destroy();
+    inline for (elements) |element| {
+        if (element.texture) |texture| {
+            texture.destroy();
+        }
     }
     checkboxTextures.deinit();
     Design.font.close();
 }
+
+//---------------------------------------------------
+//---------------------------------------------------
+//------------------ELEMENT TYPES--------------------
+//---------------------------------------------------
+//---------------------------------------------------
+
 fn uiElement(value_type: type, makeTexture: fn (value: value_type) SDL.Texture, eventHandle: ?fn (event: *const SDL.Event, data: *value_type) void) type {
     return struct {
         texture: ?SDL.Texture,
@@ -42,7 +42,7 @@ fn uiElement(value_type: type, makeTexture: fn (value: value_type) SDL.Texture, 
 
         const Self = @This();
         pub fn draw(self: *Self, value: value_type) void {
-            if (value != self.cache) {
+            if (value != self.cache or self.texture == null) {
                 self.updateTexture(value) catch unreachable;
                 self.cache = value;
             }
@@ -90,16 +90,11 @@ pub fn textElement(value_type: type, print: fn (buf: []u8, val: value_type) [:0]
     };
 }
 
-pub var exit_button = uiElement(bool, exitButtonTexture, stopRunning){ .texture = null, .cache = false, .rect = &Design.exit_button };
-fn exitButtonTexture(running: bool) SDL.Texture {
-    _ = running;
-    return SDLex.cloneTexture(checkboxTextures.disabled, owner_renderer) catch unreachable;
-}
-fn stopRunning(event: *const SDL.Event, running: *bool) void {
-    if (event.* == .mouse_button_up and event.mouse_button_up.button == .left) {
-        running.* = false;
-    }
-}
+//---------------------------------------------------
+//---------------------------------------------------
+//-------------CONSTANTS AND TEXTURES----------------
+//---------------------------------------------------
+//---------------------------------------------------
 
 var checkboxTextures = struct {
     enabled: SDL.Texture,
@@ -115,12 +110,29 @@ var checkboxTextures = struct {
     }
 }{ .enabled = undefined, .disabled = undefined };
 
-pub const checkbox = uiElement(bool, makeCheckBox, freecamToggle);
-fn makeCheckBox(enabled: bool) SDL.Texture {
-    const right_texture = if (enabled) checkboxTextures.enabled else checkboxTextures.disabled;
-    return SDLex.cloneTexture(right_texture, owner_renderer) catch unreachable;
+// constants that must be passed as variables (var) to the event handle function
+pub var FALSE = false;
+pub var TRUE = true;
+pub var VOID = {};
+
+//---------------------------------------------------
+//---------------------------------------------------
+//-------------------ELEMENTS------------------------
+//---------------------------------------------------
+//---------------------------------------------------
+
+pub var exit_button = uiElement(bool, exitButtonTexture, stopRunning){ .texture = null, .cache = false, .rect = &Design.exit_button };
+fn stopRunning(event: *const SDL.Event, running: *bool) void {
+    if (event.* == .mouse_button_up and event.mouse_button_up.button == .left) {
+        running.* = false;
+    }
+}
+fn exitButtonTexture(running: bool) SDL.Texture {
+    _ = running;
+    return SDLex.cloneTexture(checkboxTextures.disabled, owner_renderer) catch unreachable;
 }
 
+pub const checkbox = uiElement(bool, makeCheckBox, freecamToggle);
 pub fn checkBoxClick(event: *const SDL.Event, data: *bool) void {
     if (event.* == .mouse_button_up) {
         if (event.mouse_button_up.button == .left) {
@@ -128,15 +140,17 @@ pub fn checkBoxClick(event: *const SDL.Event, data: *bool) void {
         }
     }
 }
+fn makeCheckBox(enabled: bool) SDL.Texture {
+    const right_texture = if (enabled) checkboxTextures.enabled else checkboxTextures.disabled;
+    return SDLex.cloneTexture(right_texture, owner_renderer) catch unreachable;
+}
+
 pub var speed_element = textElement(
     f128,
     printSpeed,
     scrollForSpeed,
     Design.speed.color,
 ).init(1.0, Design.speed.rect).element;
-fn printSpeed(buf: []u8, speed: f128) [:0]const u8 {
-    return std.fmt.bufPrintZ(buf, "speed: {d:.2} {s:>8}", .{ speed, if (speed == 0) "(paused)" else "" }) catch unreachable;
-}
 pub fn scrollForSpeed(event: *const SDL.Event, data: *f128) void {
     if (event.* == .mouse_wheel and data.* != 0) {
         const scroll_delta = event.mouse_wheel.delta_y;
@@ -150,8 +164,17 @@ pub fn scrollForSpeed(event: *const SDL.Event, data: *f128) void {
         }
     }
 }
+fn printSpeed(buf: []u8, speed: f128) [:0]const u8 {
+    return std.fmt.bufPrintZ(buf, "speed: {d:.2} {s:>8}", .{ speed, if (speed == 0) "(paused)" else "" }) catch unreachable;
+}
 
 pub var action_element = textElement(Action.actions, printAction, null, Design.action.color).init(Action.actions.none, Design.action.rect).element;
+fn printAction(buf: []u8, action: Action.actions) [:0]const u8 {
+    //_ = action;
+    var full_text_buf: [40]u8 = undefined;
+    const full_text = std.fmt.bufPrintZ(&full_text_buf, "action: {s}", .{actionNames(action)}) catch unreachable;
+    return std.fmt.bufPrintZ(buf, "{s:^24}", .{full_text}) catch unreachable;
+}
 //returns an appropriate name for each action to be displayed.
 fn actionNames(action: Action.actions) []const u8 {
     return switch (action) {
@@ -169,17 +192,7 @@ fn actionNames(action: Action.actions) []const u8 {
     };
 }
 
-fn printAction(buf: []u8, action: Action.actions) [:0]const u8 {
-    //_ = action;
-    var full_text_buf: [40]u8 = undefined;
-    const full_text = std.fmt.bufPrintZ(&full_text_buf, "action: {s}", .{actionNames(action)}) catch unreachable;
-    return std.fmt.bufPrintZ(buf, "{s:^24}", .{full_text}) catch unreachable;
-}
 pub const action_arrow = textElement(bool, printArrow, actionArrow, Design.action_arrow_back.color);
-fn printArrow(buf: []u8, is_forward: bool) [:0]const u8 {
-    _ = buf;
-    return if (is_forward) ">" else "<";
-}
 fn actionArrow(event: *const SDL.Event, is_forward: *bool) void {
     if (event.* == .mouse_button_up and event.mouse_button_up.button == .left) {
         if (is_forward.*) {
@@ -189,6 +202,11 @@ fn actionArrow(event: *const SDL.Event, is_forward: *bool) void {
         }
     }
 }
+fn printArrow(buf: []u8, is_forward: bool) [:0]const u8 {
+    _ = buf;
+    return if (is_forward) ">" else "<";
+}
+
 pub var action_back = action_arrow.init(false, Design.action_arrow_back.rect).element;
 pub var action_forward = action_arrow.init(true, Design.action_arrow_forward.rect).element;
 
@@ -200,12 +218,12 @@ fn printFreeCam(buf: []u8, on: void) [:0]const u8 {
 }
 
 pub var freecam_checkbox = checkbox{ .texture = null, .cache = false, .rect = &Design.CBfreecam };
-
 pub fn freecamToggle(event: *const SDL.Event, data: *bool) void {
     if (event.* == .mouse_button_up and event.mouse_button_up.button == .left) {
         data.* = !data.*;
     }
 }
+
 //---------------------------------------------------
 //---------------------------------------------------
 //-------------------GENERAL UI----------------------

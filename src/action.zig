@@ -63,6 +63,15 @@ pub fn perform(action: Action) Action {
             stack.push(app.Allocator.allocator(), method);
             return Action.stack_pop;
         },
+        .eval_function => |eval| {
+            stack.evalTop(app.renderer, eval);
+            return Action.forget_eval;
+        },
+        .forget_eval => {
+            const eval_save = stack.top_eval;
+            stack.forgetEval(app.renderer);
+            return if (eval_save) |save| Action{ .eval_function = save } else Action.none;
+        },
         .stack_pop => {
             var unpop = Action{ .stack_unpop = .{ .method = stack.stack.last.?.data, .eval = stack.top_eval orelse 0 } };
             stack.pop(app.Allocator.allocator());
@@ -73,15 +82,6 @@ pub fn perform(action: Action) Action {
             stack.push(app.Allocator.allocator(), data.method);
             stack.evalTop(app.renderer, data.eval);
             return Action{ .stack_pop = {} };
-        },
-        .eval_function => |eval| {
-            stack.evalTop(app.renderer, eval);
-            return Action.forget_eval;
-        },
-        .forget_eval => {
-            const eval_save = stack.top_eval;
-            stack.forgetEval(app.renderer);
-            return if (eval_save) |save| Action{ .eval_function = save } else Action.none;
         },
         else => {
             return Action.none;

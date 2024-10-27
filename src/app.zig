@@ -36,6 +36,7 @@ const tick_time = 1_000_000_000 / tick_rate; // time for logic update in ns
 var loading_screen_texture: SDL.Texture = undefined;
 var playback_speed: f128 = 1.0;
 pub var freecam = false;
+var current_action: Operation.Action.actions = .call;
 
 pub fn init() !void {
     if (initiallized) {
@@ -96,7 +97,7 @@ fn deinit() void {
 
     SDLex.fullyQuitSDL();
 }
-
+const element_controls = .{ &playback_speed, &current_action, &UI.VOID, &freecam, &running, &UI.FALSE, &UI.TRUE };
 fn drawFrame(iteration_time: i128) void {
     _ = iteration_time;
     renderer.clear() catch unreachable;
@@ -104,21 +105,17 @@ fn drawFrame(iteration_time: i128) void {
     stack_internal.draw(renderer, cam_view);
 
     UI.drawBG() catch unreachable;
-    UI.exit_button.draw(running);
-    UI.speed_element.draw(playback_speed);
-    UI.freecam_element.draw({});
-    UI.freecam_checkbox.draw(freecam);
-    UI.action_back.draw(false);
-    UI.action_forward.draw(true);
-    if (operation_manager.current_operation) |operation| {
-        UI.action_element.draw(operation.data.action);
+    inline for (UI.elements, 0..) |element, idx| {
+        element.draw(element_controls[idx].*);
     }
-
     renderer.present();
 }
 
 fn tickUpdate(last_iteration_time: i128) void {
     operation_manager.update(@intFromFloat(@as(f128, @floatFromInt(last_iteration_time)) * playback_speed), !freecam);
+    if (operation_manager.current_operation) |operation| {
+        current_action = operation.data.action;
+    }
     const mouse_state = SDL.getMouseState();
     const mouse_pos: SDL.Point = .{ .x = mouse_state.x, .y = mouse_state.y };
     while (SDL.pollEvent()) |ev| {
@@ -163,14 +160,11 @@ fn tickUpdate(last_iteration_time: i128) void {
             },
             else => {},
         }
-        UI.exit_button.handleEvent(&ev, mouse_pos, &running);
-        UI.speed_element.handleEvent(&ev, mouse_pos, &playback_speed);
-        UI.freecam_checkbox.handleEvent(&ev, mouse_pos, &freecam);
+        inline for (UI.elements, 0..) |element, idx| {
+            element.handleEvent(&ev, mouse_pos, element_controls[idx]);
+        }
+
         //simple var booleans i can pass as a parameter to the action arrows
-        var always_false = false;
-        var always_true = true;
-        UI.action_back.handleEvent(&ev, mouse_pos, &always_false);
-        UI.action_forward.handleEvent(&ev, mouse_pos, &always_true);
     }
 }
 
