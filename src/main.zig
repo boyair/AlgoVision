@@ -66,11 +66,9 @@ pub fn main() !void {
 }
 
 //TODO:
-// add a close button to UI
 // try to fix occacional crushes when interacting with the stack
+//make allocations start at a random (but available) location to make data structures like linked lists, trees etc... look better
 //make a pointer (can only be allocated on the heap) with an arrow that points to the address
 //make pointer(^) arrows toggleable with a checkbox
 //start working on sound
-//move logic to another thread to avoid framerate limitation (have a tickrate sepertae from framerate)
-//improve ui element for current action. add arrows for fastforward/ undo
 //improve api to make it look more like zig code and not like a new language

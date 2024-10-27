@@ -1,7 +1,6 @@
 const std = @import("std");
 const SDL = @import("sdl2");
 const SDLex = @import("SDLex.zig");
-const Vec2 = @import("Vec2.zig").Vec2;
 const View = @import("view.zig").View;
 pub const heap = @import("heap/interface.zig");
 const heap_internal = @import("heap/internal.zig");
@@ -163,8 +162,6 @@ fn tickUpdate(last_iteration_time: i128) void {
         inline for (UI.elements, 0..) |element, idx| {
             element.handleEvent(&ev, mouse_pos, element_controls[idx]);
         }
-
-        //simple var booleans i can pass as a parameter to the action arrows
     }
 }
 
