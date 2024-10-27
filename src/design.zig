@@ -60,6 +60,7 @@ pub const UI = struct {
         .color = SDL.Color.white,
     };
     pub var CBfreecam = SDL.Rectangle{ .x = 25, .y = 210, .width = 45, .height = 45 };
+    pub var exit_button = SDL.Rectangle{ .x = 400, .y = 0, .width = 45, .height = 45 };
 };
 
 pub const stack = struct {

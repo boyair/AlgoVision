@@ -10,6 +10,7 @@ pub fn init(exe_path: []const u8, comptime font_path: []const u8, renderer: SDL.
     Design.font = SDLex.loadResource(exe_path, font_path, renderer) catch unreachable;
     owner_renderer = renderer;
     try checkboxTextures.init(exe_path, renderer);
+    try exit_button.updateTexture(true);
     try speed_element.updateTexture(1.0);
     try action_element.updateTexture(Action.actions.none);
     try action_back.updateTexture(false);
@@ -87,6 +88,17 @@ pub fn textElement(value_type: type, print: fn (buf: []u8, val: value_type) [:0]
             return texture;
         }
     };
+}
+
+pub var exit_button = uiElement(bool, exitButtonTexture, stopRunning){ .texture = null, .cache = false, .rect = &Design.exit_button };
+fn exitButtonTexture(running: bool) SDL.Texture {
+    _ = running;
+    return SDLex.cloneTexture(checkboxTextures.disabled, owner_renderer) catch unreachable;
+}
+fn stopRunning(event: *const SDL.Event, running: *bool) void {
+    if (event.* == .mouse_button_up and event.mouse_button_up.button == .left) {
+        running.* = false;
+    }
 }
 
 var checkboxTextures = struct {

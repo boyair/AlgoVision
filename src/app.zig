@@ -31,7 +31,7 @@ pub var cam_view: View = undefined;
 var initiallized = false;
 var state: State = State.heap;
 var running: bool = true;
-const tick_rate = 200; // logic updates per seconds
+const tick_rate = 1000; // logic updates per seconds
 const tick_time = 1_000_000_000 / tick_rate; // time for logic update in ns
 var loading_screen_texture: SDL.Texture = undefined;
 var playback_speed: f128 = 1.0;
@@ -104,6 +104,7 @@ fn drawFrame(iteration_time: i128) void {
     stack_internal.draw(renderer, cam_view);
 
     UI.drawBG() catch unreachable;
+    UI.exit_button.draw(running);
     UI.speed_element.draw(playback_speed);
     UI.freecam_element.draw({});
     UI.freecam_checkbox.draw(freecam);
@@ -162,8 +163,8 @@ fn tickUpdate(last_iteration_time: i128) void {
             },
             else => {},
         }
+        UI.exit_button.handleEvent(&ev, mouse_pos, &running);
         UI.speed_element.handleEvent(&ev, mouse_pos, &playback_speed);
-        //UI.freecam_element.handleEvent(&ev, mouse_pos, &freecam);
         UI.freecam_checkbox.handleEvent(&ev, mouse_pos, &freecam);
         //simple var booleans i can pass as a parameter to the action arrows
         var always_false = false;
