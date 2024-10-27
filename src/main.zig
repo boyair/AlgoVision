@@ -66,7 +66,6 @@ pub fn main() !void {
 }
 
 //TODO:
-// give seperate names to actionsin UI
 // add a close button to UI
 // try to fix occacional crushes when interacting with the stack
 //make a pointer (can only be allocated on the heap) with an arrow that points to the address

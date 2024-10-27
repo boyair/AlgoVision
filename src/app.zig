@@ -117,7 +117,7 @@ fn drawFrame(iteration_time: i128) void {
 }
 
 fn tickUpdate(last_iteration_time: i128) void {
-    operation_manager.update(last_iteration_time, !freecam);
+    operation_manager.update(@intFromFloat(@as(f128, @floatFromInt(last_iteration_time)) * playback_speed), !freecam);
     const mouse_state = SDL.getMouseState();
     const mouse_pos: SDL.Point = .{ .x = mouse_state.x, .y = mouse_state.y };
     while (SDL.pollEvent()) |ev| {

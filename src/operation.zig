@@ -7,7 +7,8 @@ const app = @import("app.zig");
 const Animation = @import("animation.zig");
 const View = @import("view.zig").View;
 pub var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-
+//TODO:
+// simplify the code to be more clear without hurting fuctionality
 const OperationState = enum(u8) {
     animate,
     act,
