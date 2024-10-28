@@ -72,3 +72,7 @@ pub fn main() !void {
 //make pointer(^) arrows toggleable with a checkbox
 //start working on sound
 //improve api to make it look more like zig code and not like a new language
+
+//the following code should work once pointers are implemented:
+//mem[0] = heap.new(2) //pointer to block of size 2
+//const block1: heap.pointer = heap.derefrance(mem[0])

@@ -37,6 +37,11 @@ var playback_speed: f128 = 1.0;
 pub var freecam = false;
 var current_action: Operation.Action.actions = .call;
 
+//---------------------------------------------------
+//---------------------------------------------------
+//------------------INITIALIZATION-------------------
+//---------------------------------------------------
+//---------------------------------------------------
 pub fn init() !void {
     if (initiallized) {
         std.debug.print("tried to initiallize app more than once!", .{});
@@ -78,13 +83,6 @@ pub fn init() !void {
     initiallized = true;
 }
 
-pub fn start() !void {
-    defer deinit();
-    const logic_thread = try std.Thread.spawn(.{}, runLogic, .{});
-    defer logic_thread.join();
-    repeatTimed(drawFrame, frame_time_nano);
-}
-
 fn deinit() void {
     renderer.destroy();
     window.destroy();
@@ -96,6 +94,20 @@ fn deinit() void {
 
     SDLex.fullyQuitSDL();
 }
+
+//---------------------------------------------------
+//---------------------------------------------------
+//----------------------RUNNING----------------------
+//---------------------------------------------------
+//---------------------------------------------------
+
+pub fn start() !void {
+    defer deinit();
+    const logic_thread = try std.Thread.spawn(.{}, runLogic, .{});
+    defer logic_thread.join();
+    repeatTimed(drawFrame, frame_time_nano);
+}
+
 const element_controls = .{ &playback_speed, &current_action, &UI.VOID, &freecam, &running, &UI.FALSE, &UI.TRUE };
 fn drawFrame(iteration_time: i128) void {
     _ = iteration_time;

@@ -7,12 +7,12 @@ const Vec2 = @import("../Vec2.zig").Vec2;
 const SDLex = @import("../SDLex.zig");
 const design = @import("../design.zig").heap;
 const ZoomAnimation = @import("../animation.zig").ZoomAnimation;
-pub const rows = 100;
-pub const columns = 100;
+pub const rows = 30;
+pub const columns = 30;
 const Ownership = enum(u8) {
     free, //block is available for alocation.
-    taken, // block used by another program.
-    user, // allocated by user and can be used.
+    taken, //block is used by another program.
+    user, //block is allocated by user and can be used.
 
 };
 const block = struct {
@@ -371,9 +371,43 @@ fn getColors(idx: usize) design.block.Colors {
     };
 }
 
+pub fn findRandFreeRange(size: usize) HeapError!struct { start: usize, end: usize } {
+    var start_idx: usize = 0;
+    var end_idx: usize = start_idx;
+    var found: bool = false;
+    // Create a random number generator
+    var rng = std.Random.DefaultPrng.init(blk: {
+        var seed: u64 = undefined;
+        std.crypto.random.bytes(std.mem.asBytes(&seed));
+        break :blk seed;
+    });
+
+    // Get a Random interface
+    const random = rng.random();
+    main: while (true) {
+        start_idx = @mod(@abs(random.int(i64)), mem_runtime.len - size);
+        if (mem_runtime[start_idx].owner != .free) continue;
+
+        for (start_idx..start_idx + size) |Eidx| {
+            if (mem_runtime[Eidx].owner != .free)
+                break;
+            const true_end = Eidx + 1;
+            if (size <= true_end - start_idx) {
+                found = true;
+                end_idx = true_end;
+                break :main;
+            }
+        }
+    }
+
+    if (!found)
+        return HeapError.MemoryNotAvailable;
+    std.debug.print("start: {d}, end: {d}", .{ .start = start_idx, .end = end_idx });
+    return .{ .start = start_idx, .end = end_idx };
+}
 pub fn findFreeRange(size: usize) HeapError!struct { start: usize, end: usize } {
     var start_idx: usize = 0;
-    var end_idx: usize = 0;
+    var end_idx: usize = start_idx;
     var found: bool = false;
 
     main: for (0..mem_runtime.len - size) |Sidx| {
