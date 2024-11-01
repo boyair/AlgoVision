@@ -64,12 +64,12 @@ pub fn perform(action: Action) Action {
             return Action.stack_pop;
         },
         .eval_function => |eval| {
-            stack.evalTop(app.renderer, eval);
+            stack.evalTop(eval);
             return Action.forget_eval;
         },
         .forget_eval => {
             const eval_save = stack.top_eval;
-            stack.forgetEval(app.renderer);
+            stack.forgetEval();
             return if (eval_save) |save| Action{ .eval_function = save } else Action.none;
         },
         .stack_pop => {
@@ -80,7 +80,7 @@ pub fn perform(action: Action) Action {
         },
         .stack_unpop => |data| {
             stack.push(app.Allocator.allocator(), data.method);
-            stack.evalTop(app.renderer, data.eval);
+            stack.evalTop(data.eval);
             return Action{ .stack_pop = {} };
         },
         else => {

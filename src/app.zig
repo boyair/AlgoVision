@@ -64,7 +64,7 @@ pub fn init() !void {
     Design.UI.view = View.init(.{ .x = cam_view.port.width, .y = 0, .width = display_info.w - cam_view.port.width, .height = display_info.h });
     Design.UI.view.cam.x = 0; // not require an offset when drawing ui.
     operation_manager = Operation.Manager.init();
-
+    std.debug.print("{}\n", .{@sizeOf(SDL.Texture)});
     exe_path = try std.fs.selfExeDirPathAlloc(gpa.allocator());
 
     //init UI
@@ -105,20 +105,23 @@ pub fn start() !void {
     defer deinit();
     const logic_thread = try std.Thread.spawn(.{}, runLogic, .{});
     defer logic_thread.join();
-    repeatTimed(drawFrame, frame_time_nano);
+    repeatTimed(renderFrame, frame_time_nano);
 }
 
-const element_controls = .{ &playback_speed, &current_action, &UI.VOID, &freecam, &running, &UI.FALSE, &UI.TRUE };
-fn drawFrame(iteration_time: i128) void {
+const element_params = .{ &playback_speed, &current_action, &UI.VOID, &freecam, &running, &UI.FALSE, &UI.TRUE };
+fn renderFrame(iteration_time: i128) void {
     _ = iteration_time;
+    stack_internal.reciveTextureUpdateSignal();
+    stack_internal.clearGarbageTextures();
+    std.debug.print("render 123target: {any}\n", .{renderer.getTarget()});
     renderer.clear() catch unreachable;
     heap_internal.draw(renderer, cam_view);
     stack_internal.draw(renderer, cam_view);
-
     UI.drawBG() catch unreachable;
     inline for (UI.elements, 0..) |element, idx| {
-        element.draw(element_controls[idx].*);
+        element.draw(element_params[idx].*);
     }
+    renderer.setTarget(null) catch unreachable;
     renderer.present();
 }
 
@@ -172,7 +175,7 @@ fn tickUpdate(last_iteration_time: i128) void {
             else => {},
         }
         inline for (UI.elements, 0..) |element, idx| {
-            element.handleEvent(&ev, mouse_pos, element_controls[idx]);
+            element.handleEvent(&ev, mouse_pos, element_params[idx]);
         }
     }
 }

@@ -30,7 +30,7 @@ pub fn call(function: *const fn (args: []i64) i64, args: []i64) i64 {
     var args_list = std.ArrayList(i64).init(app.Allocator.allocator());
     args_list.appendSlice(args) catch unreachable;
     //push call operation
-    const call_operation: Operation.Operation = .{ .action = .{ .call = .{ .function = function, .args = args_list } }, .animation = call_animation, .pause_time_nano = 400_000_000 };
+    const call_operation: Operation.Operation = .{ .action = .{ .call = .{ .function = function, .args = args_list, .texture = null } }, .animation = call_animation, .pause_time_nano = 400_000_000 };
     app.operation_manager.push(app.Allocator.allocator(), call_operation);
     //NOTE:
     //important to call only after pushing call

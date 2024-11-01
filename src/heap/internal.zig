@@ -317,10 +317,10 @@ fn signalBatchUpdate(batch: idx2D) void {
 }
 fn signalValueUpdate(val: idx2D) void {
     texture_update_mut.lock();
+    defer texture_update_mut.unlock();
     if (values_to_update.get(val) == null) {
         values_to_update.put(val, {}) catch unreachable;
     }
-    texture_update_mut.unlock();
 }
 
 pub fn set(idx: usize, value: i64) !void {

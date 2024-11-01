@@ -126,10 +126,6 @@ pub const View = struct {
     pub fn draw(self: View, rect: SDL.RectangleF, texture: SDL.Texture, renderer: SDL.Renderer) void {
         const transformed = self.convert(rect) catch null;
 
-        //const visible_part = SDL.RectangleF{
-        //.x = self.port.x
-
-        //}
         if (transformed) |in_view| {
             renderer.copy(texture, SDLex.convertSDLRect(in_view), null) catch unreachable;
         }

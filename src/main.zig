@@ -66,8 +66,7 @@ pub fn main() !void {
 }
 
 //TODO:
-// try to fix occacional crushes when interacting with the stack
-//make allocations start at a random (but available) location to make data structures like linked lists, trees etc... look better
+//change search action to not just go from start but nove around randomly.
 //make a pointer (can only be allocated on the heap) with an arrow that points to the address
 //make pointer(^) arrows toggleable with a checkbox
 //start working on sound

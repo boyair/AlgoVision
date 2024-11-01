@@ -76,7 +76,7 @@ pub fn get(idx: usize) i64 {
 
 //return array (slice) of indices of allocated memory.
 pub fn allocate(allocator: std.mem.Allocator, size: usize) []usize {
-    const range = Internals.findRandFreeRange(size) catch {
+    const range = Internals.findFreeRange(size) catch {
         @panic("could not find large enough buffer");
     };
 
