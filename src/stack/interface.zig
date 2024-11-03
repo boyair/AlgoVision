@@ -22,15 +22,18 @@ fn topMethodView(stack_len: isize) SDL.RectangleF {
     return SDLex.alignedRect(SDLex.convertSDLRect(methodRect), .{ .x = 0.5, .y = 0.5 }, Vec2.init(view_size, view_size));
 }
 
-pub fn call(function: *const fn (args: []i64) i64, args: []i64) i64 {
-
+pub fn call(comptime function: anytype, args: anytype) i64 {
+    //std.Thread.spawn(config: SpawnConfig, comptime function: anytype, args: anytype)
     //make animation
     const call_animation: ZoomAnimation = ZoomAnimation.init(&app.cam_view, null, topMethodView(stack_len_runtime), 500_000_000);
     //copy args to a list
-    var args_list = std.ArrayList(i64).init(app.Allocator.allocator());
-    args_list.appendSlice(args) catch unreachable;
+    const method = Internals.MethodData{ .signiture = Internals.fmtz(args, app.Allocator.allocator()), .texture = null };
     //push call operation
-    const call_operation: Operation.Operation = .{ .action = .{ .call = .{ .function = function, .args = args_list, .texture = null } }, .animation = call_animation, .pause_time_nano = 400_000_000 };
+    const call_operation: Operation.Operation = .{
+        .action = .{ .call = method },
+        .animation = call_animation,
+        .pause_time_nano = 400_000_000,
+    };
     app.operation_manager.push(app.Allocator.allocator(), call_operation);
     //NOTE:
     //important to call only after pushing call

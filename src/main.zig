@@ -20,45 +20,29 @@ fn factorial(num: []i64) i64 {
 }
 var mem: []usize = undefined;
 
-fn fib(num: []i64) i64 {
-    if (num[0] <= 1)
-        return num[0];
-
-    var callm1: [1]i64 = .{num[0] - 1};
-    var callm2: [1]i64 = .{num[0] - 2};
-
-    const mem1 = app.heap.get(mem[@intCast(callm1[0])]);
-    const mem2 = app.heap.get(mem[@intCast(callm2[0])]);
-
-    var result1: i64 = undefined;
-    var result2: i64 = undefined;
-    if (mem1 == -1) {
-        result1 = app.stack.call(fib, &callm1);
-        app.heap.set(mem[@intCast(callm1[0])], result1);
-    } else {
-        result1 = mem1;
-    }
-    if (mem2 == -1) {
-        result2 = app.stack.call(fib, &callm2);
-        app.heap.set(mem[@intCast(callm2[0])], result2);
-    } else {
-        result2 = mem2;
-    }
-    return result1 + result2;
+fn fib(num: i64) i64 {
+    if (num <= 1)
+        return num;
+    std.debug.print("idx: {d}\n", .{mem[@intCast(num - 1)]});
+    const heap_val = heap.get(mem[@intCast(num - 1)]);
+    if (heap_val != -1)
+        return heap_val;
+    const result = app.stack.call(fib, (num - 1)) + app.stack.call(fib, (num - 2));
+    heap.set(mem[@intCast(num - 1)], result);
+    return result;
 }
 
 //FIB with CAHCE!!
 pub fn main() !void {
     try app.init();
-    const fib_num = 14;
-    var num: [1]i64 = .{fib_num};
+    const fib_num: i64 = 14;
     mem = app.heap.allocate(gpa.allocator(), fib_num);
 
     for (mem) |block| {
         heap.set(block, -1);
     }
 
-    app.log("fib of {d} is {d}", .{ num[0], app.stack.call(fib, &num) });
+    app.log("fib of {d} is {d}", .{ fib_num, app.stack.call(fib, fib_num) });
     app.heap.free(gpa.allocator(), mem);
     //const mem = heap.allocate(gpa.allocator(), 5);
     //heap.set(mem[4], 3);
@@ -66,7 +50,6 @@ pub fn main() !void {
 }
 
 //TODO:
-//change search action to not just go from start but nove around randomly.
 //make a pointer (can only be allocated on the heap) with an arrow that points to the address
 //make pointer(^) arrows toggleable with a checkbox
 //start working on sound
@@ -74,4 +57,4 @@ pub fn main() !void {
 
 //the following code should work once pointers are implemented:
 //mem[0] = heap.new(2) //pointer to block of size 2
-//const block1: heap.pointer = heap.derefrance(mem[0])
+//const block1: heap.pointer = heap.dereferance(mem[0])

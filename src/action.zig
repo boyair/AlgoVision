@@ -24,11 +24,11 @@ pub const Action = union(actions) {
     allocate: usize,
     free: usize,
     print: []const u8,
-    call: stack.Method,
+    call: stack.MethodData,
     eval_function: i64,
     forget_eval: void,
     stack_pop: void,
-    stack_unpop: struct { eval: i64, method: stack.Method }, // undoing the pop action requires both pushing it back and evaluate
+    stack_unpop: struct { eval: i64, method: stack.MethodData }, // undoing the pop action requires both pushing it back and evaluate
     none: void,
 };
 

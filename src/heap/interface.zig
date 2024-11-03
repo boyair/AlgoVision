@@ -76,11 +76,21 @@ pub fn get(idx: usize) i64 {
 
 //return array (slice) of indices of allocated memory.
 pub fn allocate(allocator: std.mem.Allocator, size: usize) []usize {
-    const range = Internals.findFreeRange(size) catch {
+    const range = Internals.findRandFreeRange(size) catch {
         @panic("could not find large enough buffer");
     };
 
-    for (0..range.start) |idx| {
+    var rng = std.Random.DefaultPrng.init(blk: {
+        var seed: u64 = undefined;
+        std.crypto.random.bytes(std.mem.asBytes(&seed));
+        break :blk seed;
+    });
+
+    // Get a Random interface
+    const random = rng.random();
+
+    for (0..5) |_| {
+        const idx = @mod(@abs(random.int(i64)), Internals.mem.len - size);
         const block_view = blockView(idx);
         const animation = ZoomAnimation.init(&app.cam_view, null, block_view, 200_000_000);
         const operation: Operation.Operation = .{ .animation = animation, .action = .{ .search = {} }, .pause_time_nano = 200_000_000 };

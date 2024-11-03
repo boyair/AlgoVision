@@ -1,3 +1,4 @@
+const Vec2 = @import("Vec2.zig").Vec2;
 const std = @import("std");
 const SDL = @import("sdl2");
 const SDLex = @import("SDLex.zig");
@@ -15,7 +16,7 @@ var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 pub var Allocator = std.heap.ArenaAllocator.init(gpa.allocator());
 pub var exe_path: []u8 = undefined;
 
-const fps = 144;
+const fps = 240;
 const frame_time_nano = 1_000_000_000 / fps;
 
 const State = enum {
@@ -44,7 +45,7 @@ var current_action: Operation.Action.actions = .call;
 //---------------------------------------------------
 pub fn init() !void {
     if (initiallized) {
-        std.debug.print("tried to initiallize app more than once!", .{});
+        std.debug.print("tried to initiallize app more than once!\nAborting initialization", .{});
         return;
     }
 
@@ -64,7 +65,6 @@ pub fn init() !void {
     Design.UI.view = View.init(.{ .x = cam_view.port.width, .y = 0, .width = display_info.w - cam_view.port.width, .height = display_info.h });
     Design.UI.view.cam.x = 0; // not require an offset when drawing ui.
     operation_manager = Operation.Manager.init();
-    std.debug.print("{}\n", .{@sizeOf(SDL.Texture)});
     exe_path = try std.fs.selfExeDirPathAlloc(gpa.allocator());
 
     //init UI
@@ -108,12 +108,23 @@ pub fn start() !void {
     repeatTimed(renderFrame, frame_time_nano);
 }
 
-const element_params = .{ &playback_speed, &current_action, &UI.VOID, &freecam, &running, &UI.FALSE, &UI.TRUE };
+const example: Vec2 = .{
+    .x = 9,
+    .y = 7,
+};
+const element_params = .{
+    &playback_speed,
+    &current_action,
+    &UI.VOID,
+    &freecam,
+    &running,
+    &UI.FALSE,
+    &UI.TRUE,
+};
 fn renderFrame(iteration_time: i128) void {
     _ = iteration_time;
     stack_internal.reciveTextureUpdateSignal();
     stack_internal.clearGarbageTextures();
-    std.debug.print("render 123target: {any}\n", .{renderer.getTarget()});
     renderer.clear() catch unreachable;
     heap_internal.draw(renderer, cam_view);
     stack_internal.draw(renderer, cam_view);

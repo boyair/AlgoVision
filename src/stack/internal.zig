@@ -6,15 +6,16 @@ const app = @import("../app.zig");
 const View = @import("../view.zig").View;
 const heap = @import("../heap/internal.zig");
 
-pub var stack: std.DoublyLinkedList(Method) = undefined;
+pub var stack: std.DoublyLinkedList(MethodData) = undefined;
 pub var top_eval: ?i64 = null;
 var textureGarbage: std.ArrayList(SDL.Texture) = undefined;
 
 pub fn init() !void {
-    stack = std.DoublyLinkedList(Method){};
+    stack = std.DoublyLinkedList(MethodData){};
     design.font = try SDLex.loadResource(app.exe_path, "/ioveska.ttf", app.renderer);
     design.method.bg = try SDLex.loadResource(app.exe_path, "/textures/method.png", app.renderer);
-    textureGarbage = std.ArrayList(SDL.Texture).init(app.Allocator.allocator());
+    textureGarbage = try std.ArrayList(SDL.Texture).initCapacity(app.Allocator.allocator(), 3);
+
     design.frame.texture = try SDLex.loadResource(app.exe_path, "/textures/ram.png", app.renderer);
 }
 pub fn deinit(allocator: std.mem.Allocator) void {
@@ -65,33 +66,95 @@ fn UpdateTopTexture() void {
 
 //-----------------------------------------------------------------------
 
-pub const Method = struct {
-    const Self = @This();
-    function: *const fn ([]i64) i64,
-    args: std.ArrayList(i64),
-    texture: ?SDL.Texture = null,
+pub fn fmtz(args: anytype, allocator: std.mem.Allocator) [:0]u8 {
+    return std.fmt.allocPrintZ(allocator, "fn ({any})", .{args}) catch unreachable;
+}
+pub fn makeFuncTexture(signiture: [:0]u8, renderer: SDL.Renderer) SDL.Texture {
+    const last_target = renderer.getTarget();
+    const text =
+        if (top_eval) |eval| std.fmt.allocPrintZ(app.Allocator.allocator(), "{d}", .{eval}) catch unreachable else signiture;
+    defer app.Allocator.allocator().free(text);
+    const texture = try SDLex.cloneTexture(design.method.bg, renderer);
+    //copy design texture
+    try renderer.setTarget(texture);
+    try renderer.copy(design.method.bg, null, null);
+    //create text texture and place it on copy
+    const text_texture = SDLex.textureFromText(text, design.font, design.method.fg, renderer);
+    const text_size: SDL.Size = .{ .width = @intCast(40 * text.len), .height = 250 };
+    const info = try texture.query();
+    const text_rect = SDLex.alignedRect(SDL.Rectangle{ .x = 0, .y = 0, .width = @intCast(info.width), .height = @intCast(info.height) }, .{ .x = 0.5, .y = 0.5 }, text_size);
+    try renderer.copy(text_texture, text_rect, null);
+    texture_made_counter += 1;
+    try renderer.setTarget(last_target);
+    return texture;
+}
 
-    pub fn fmt(self: Self, allocator: std.mem.Allocator) []u8 {
-        return std.fmt.allocPrint(allocator, "fn ({any})", .{self.args.items.ptr[0..self.args.items.len]}) catch unreachable;
-    }
-    pub fn fmtZ(self: Self, allocator: std.mem.Allocator) [:0]u8 {
-        return std.fmt.allocPrintZ(allocator, "fn ({any})", .{self.args.items.ptr[0..self.args.items.len]}) catch unreachable;
-    }
-    fn makeTexture(self: *Method, renderer: SDL.Renderer) !void {
+pub fn Method(comptime args_type: type) type {
+    //, function: fn (args_type) i64
+    return struct {
+        const Self = @This();
+        args: args_type,
+        pub fn fmt(self: Self, allocator: std.mem.Allocator) []u8 {
+            return std.fmt.allocPrint(allocator, "fn ({any})", .{self.args}) catch unreachable;
+        }
+        pub fn fmtZ(self: Self, allocator: std.mem.Allocator) [:0]u8 {
+            return std.fmt.allocPrintZ(allocator, "fn ({any})", .{self.args}) catch unreachable;
+        }
+        fn makeTexture(self: *Method, renderer: SDL.Renderer) !void {
+            if (self.texture) |texture| {
+                textureGarbage.append(texture) catch unreachable;
+                self.texture = null;
+            }
+            const last_target = renderer.getTarget();
+
+            const text =
+                if (top_eval) |eval| std.fmt.allocPrintZ(app.Allocator.allocator(), "{d}", .{eval}) catch unreachable else self.fmtZ(app.Allocator.allocator());
+            defer app.Allocator.allocator().free(text);
+            const texture = try SDLex.cloneTexture(design.method.bg, renderer);
+            //copy design texture
+            try renderer.setTarget(texture);
+            try renderer.copy(design.method.bg, null, null);
+            //create text texture and place it on copy
+            const text_texture = SDLex.textureFromText(text, design.font, design.method.fg, renderer);
+            const text_size: SDL.Size = .{ .width = @intCast(40 * text.len), .height = 250 };
+            const info = try texture.query();
+            const text_rect = SDLex.alignedRect(SDL.Rectangle{ .x = 0, .y = 0, .width = @intCast(info.width), .height = @intCast(info.height) }, .{ .x = 0.5, .y = 0.5 }, text_size);
+            try renderer.copy(text_texture, text_rect, null);
+            self.texture = texture;
+            texture_made_counter += 1;
+            try renderer.setTarget(last_target);
+        }
+        fn destroyTexture(self: *Method) void {
+            if (self.texture) |tex| {
+                const save_tex = tex;
+                self.texture = null;
+                save_tex.destroy();
+            }
+        }
+        pub fn getData(self: Self, allocator: std.mem.Allocator) MethodData {
+            return .{ .signiture = self.fmtZ(allocator), .texture = if (self.texture) |texture| texture else self.makeTexture(app.renderer) };
+        }
+    };
+}
+
+//data to save function data to use in visualization later.
+pub const MethodData = struct {
+    signiture: [:0]u8,
+    texture: ?SDL.Texture,
+    const Self = @This();
+    fn makeTexture(self: *Self, renderer: SDL.Renderer) !void {
         if (self.texture) |texture| {
-            textureGarbage.append(texture) catch unreachable;
+            try textureGarbage.append(texture);
             self.texture = null;
         }
         const last_target = renderer.getTarget();
-
-        const text =
-            if (top_eval) |eval| std.fmt.allocPrintZ(app.Allocator.allocator(), "{d}", .{eval}) catch unreachable else self.fmtZ(app.Allocator.allocator());
-        defer app.Allocator.allocator().free(text);
         const texture = try SDLex.cloneTexture(design.method.bg, renderer);
         //copy design texture
         try renderer.setTarget(texture);
         try renderer.copy(design.method.bg, null, null);
         //create text texture and place it on copy
+        const text =
+            if (top_eval) |eval| std.fmt.allocPrintZ(app.Allocator.allocator(), "{d}", .{eval}) catch unreachable else self.signiture;
         const text_texture = SDLex.textureFromText(text, design.font, design.method.fg, renderer);
         const text_size: SDL.Size = .{ .width = @intCast(40 * text.len), .height = 250 };
         const info = try texture.query();
@@ -101,19 +164,12 @@ pub const Method = struct {
         texture_made_counter += 1;
         try renderer.setTarget(last_target);
     }
-    fn destroyTexture(self: *Method) void {
-        if (self.texture) |tex| {
-            const save_tex = tex;
-            self.texture = null;
-            save_tex.destroy();
-        }
-    }
 };
 
-pub fn push(allocator: std.mem.Allocator, method: Method) void {
+pub fn push(allocator: std.mem.Allocator, method: MethodData) void {
     TextureUpdateMut.mutex.lock();
     defer TextureUpdateMut.mutex.unlock();
-    const node = allocator.create(std.DoublyLinkedList(Method).Node) catch unreachable;
+    const node = allocator.create(std.DoublyLinkedList(MethodData).Node) catch unreachable;
     node.data = method;
     stack.append(node);
     sendTextureUpdateSignal();
@@ -124,9 +180,7 @@ pub fn pop(allocator: std.mem.Allocator) void {
     if (stack.pop()) |last| {
         if (last.data.texture) |texture| {
             textureGarbage.append(texture) catch unreachable;
-            last.data.texture = null;
         }
-
         allocator.destroy(last);
         top_eval = null;
     }

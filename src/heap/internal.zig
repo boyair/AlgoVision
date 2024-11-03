@@ -10,11 +10,12 @@ const ZoomAnimation = @import("../animation.zig").ZoomAnimation;
 pub const rows = 30;
 pub const columns = 30;
 const Ownership = enum(u8) {
-    free, //block is available for alocation.
+    free, //block is available for allocation.
     taken, //block is used by another program.
     user, //block is allocated by user and can be used.
 
 };
+
 const block = struct {
     val: i64,
     owner: Ownership,
