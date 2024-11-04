@@ -16,8 +16,7 @@ pub const Vec2 = struct {
     }
 };
 
-const std = @import("std");
-const testing = std.testing;
+const testing = @import("std").testing;
 test "operations" {
     const v1: Vec2 = .{ .x = 34, .y = 10 };
     const v2: Vec2 = .{ .x = 3.4, .y = 100 };

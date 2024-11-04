@@ -56,6 +56,7 @@ pub fn reciveTextureUpdateSignal() void {
     if (TextureUpdateMut.needs_update)
         UpdateTopTexture();
 }
+
 fn UpdateTopTexture() void {
     if (stack.last) |top_method| {
         top_method.data.makeTexture(app.renderer) catch unreachable;
@@ -68,25 +69,6 @@ fn UpdateTopTexture() void {
 
 pub fn fmtz(args: anytype, allocator: std.mem.Allocator) [:0]u8 {
     return std.fmt.allocPrintZ(allocator, "fn ({any})", .{args}) catch unreachable;
-}
-pub fn makeFuncTexture(signiture: [:0]u8, renderer: SDL.Renderer) SDL.Texture {
-    const last_target = renderer.getTarget();
-    const text =
-        if (top_eval) |eval| std.fmt.allocPrintZ(app.Allocator.allocator(), "{d}", .{eval}) catch unreachable else signiture;
-    defer app.Allocator.allocator().free(text);
-    const texture = try SDLex.cloneTexture(design.method.bg, renderer);
-    //copy design texture
-    try renderer.setTarget(texture);
-    try renderer.copy(design.method.bg, null, null);
-    //create text texture and place it on copy
-    const text_texture = SDLex.textureFromText(text, design.font, design.method.fg, renderer);
-    const text_size: SDL.Size = .{ .width = @intCast(40 * text.len), .height = 250 };
-    const info = try texture.query();
-    const text_rect = SDLex.alignedRect(SDL.Rectangle{ .x = 0, .y = 0, .width = @intCast(info.width), .height = @intCast(info.height) }, .{ .x = 0.5, .y = 0.5 }, text_size);
-    try renderer.copy(text_texture, text_rect, null);
-    texture_made_counter += 1;
-    try renderer.setTarget(last_target);
-    return texture;
 }
 
 pub fn Method(comptime args_type: type) type {
@@ -197,16 +179,9 @@ pub fn draw(renderer: SDL.Renderer, view: View) void {
         currentY -= design.method.size.height;
     }) {
         idx += 1;
-        //if (node.next == null) break;
         if (node.data.texture) |texture| {
             const rect = view.convert(SDLex.convertSDLRect(SDL.Rectangle{ .x = design.position.x, .y = currentY, .width = design.method.size.width, .height = design.method.size.height })) catch continue;
-            //std.debug.print("{d}, {d}, {d}, {d}\n", rect);
             renderer.copy(texture, SDLex.convertSDLRect(rect), null) catch unreachable;
-            //view.draw(rect, texture, renderer);
-            if (idx > stack.len) {
-                std.debug.print("idx: {d}\n", .{idx});
-                std.debug.print("len = {d}\n", .{stack.len});
-            }
         }
     }
 }

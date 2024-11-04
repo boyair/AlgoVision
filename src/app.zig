@@ -132,7 +132,6 @@ fn renderFrame(iteration_time: i128) void {
     inline for (UI.elements, 0..) |element, idx| {
         element.draw(element_params[idx].*);
     }
-    renderer.setTarget(null) catch unreachable;
     renderer.present();
 }
 

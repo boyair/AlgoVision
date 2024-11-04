@@ -10,20 +10,16 @@ const heap = app.heap;
 const Operation = @import("operation.zig");
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 
-fn factorial(num: []i64) i64 {
-    if (num[0] <= 1)
+fn factorial(num: i64) i64 {
+    if (num <= 1)
         return 1;
-
-    var next_call: [1]i64 = .{num[0] - 1};
-    const recursion = app.stack.call(factorial, &next_call);
-    return recursion * num[0];
+    return num * app.stack.call(factorial, num - 1);
 }
 var mem: []usize = undefined;
 
 fn fib(num: i64) i64 {
     if (num <= 1)
         return num;
-    std.debug.print("idx: {d}\n", .{mem[@intCast(num - 1)]});
     const heap_val = heap.get(mem[@intCast(num - 1)]);
     if (heap_val != -1)
         return heap_val;
@@ -35,17 +31,7 @@ fn fib(num: i64) i64 {
 //FIB with CAHCE!!
 pub fn main() !void {
     try app.init();
-    const fib_num: i64 = 14;
-    mem = app.heap.allocate(gpa.allocator(), fib_num);
-
-    for (mem) |block| {
-        heap.set(block, -1);
-    }
-
-    app.log("fib of {d} is {d}", .{ fib_num, app.stack.call(fib, fib_num) });
-    app.heap.free(gpa.allocator(), mem);
-    //const mem = heap.allocate(gpa.allocator(), 5);
-    //heap.set(mem[4], 3);
+    app.log("{d} factorial is {d}\n", .{ 7, app.stack.call(factorial, 7) });
     try app.start();
 }
 

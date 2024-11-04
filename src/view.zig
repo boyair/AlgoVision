@@ -2,6 +2,7 @@ const std = @import("std");
 const SDL = @import("sdl2");
 const SDLex = @import("SDLex.zig");
 const Vec2 = @import("Vec2.zig").Vec2;
+const Line = @import("line.zig").Line;
 const conertVecSize = @import("SDLex.zig").conertVecSize;
 
 const viewError = error{
@@ -43,6 +44,11 @@ pub const View = struct {
         const portF = SDLex.convertSDLRect(self.port);
         return Vec2{ .x = original.x * portF.width / self.cam.width, .y = original.y * portF.height / self.cam.height };
     }
+    pub fn convertVec(self: View, original: Vec2) Vec2 {
+        const portF = SDLex.convertSDLRect(self.port);
+        return Vec2{ .x = (original.x - self.cam.x) * portF.width / self.cam.width, .y = (original.y - self.cam.y) * portF.height / self.cam.height };
+    }
+
     pub fn scale_vec_cam_to_port(self: View, original: Vec2) Vec2 {
         const portF = SDLex.convertSDLRect(self.port);
         return Vec2{ .x = original.x * self.cam.width / portF.width, .y = original.y * self.cam.height / portF.height };
@@ -131,6 +137,17 @@ pub const View = struct {
         }
     }
 
+    pub fn drawLine(self: View, line: Line, color: SDL.Color, renderer: SDL.Renderer) void {
+        const transformed = blk: {
+            const start = self.convertVec(line.start);
+            const end = self.convertVec(line.end);
+            break :blk Line{ .start = start, .end = end };
+        };
+        const last_color = renderer.getColor() catch SDL.Color.rgb(0, 0, 0);
+        renderer.setColor(color) catch unreachable;
+        renderer.drawLineF(transformed.start.x, transformed.start.y, transformed.end.x, transformed.end.y) catch unreachable;
+        renderer.setColor(last_color) catch unreachable;
+    }
     pub fn fillRect(self: View, rect: SDL.RectangleF, renderer: SDL.Renderer) void {
         const transformed = self.convert(rect) catch null;
         if (transformed) |in_view| {
