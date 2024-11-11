@@ -7,8 +7,8 @@ const Vec2 = @import("../Vec2.zig").Vec2;
 const SDLex = @import("../SDLex.zig");
 const design = @import("../design.zig").heap;
 const ZoomAnimation = @import("../animation.zig").ZoomAnimation;
-pub const rows = 30;
-pub const columns = 30;
+pub const rows = 60;
+pub const columns = 60;
 const Ownership = enum(u8) {
     free, //block is available for allocation.
     taken, //block is used by another program.

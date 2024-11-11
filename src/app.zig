@@ -10,6 +10,7 @@ pub const stack_internal = @import("stack/internal.zig");
 const Design = @import("design.zig");
 const Operation = @import("operation.zig");
 const Animation = @import("animation.zig");
+const Pointer = @import("pointer.zig");
 const UI = @import("UI.zig");
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 //arena allocator for all the internal allocation of the application
@@ -69,8 +70,8 @@ pub fn init() !void {
 
     //init UI
     try UI.init(exe_path, "/3270.ttf", renderer);
-    //loading screen
 
+    //loading screen
     loading_screen_texture = SDLex.textureFromText("Loading...", Design.UI.font, SDL.Color.rgb(150, 150, 150), renderer);
     try renderer.copy(loading_screen_texture, .{ .x = 0, .y = 200, .width = 1000, .height = 600 }, null);
     renderer.present();
@@ -80,6 +81,9 @@ pub fn init() !void {
 
     //init stack
     try stack_internal.init();
+
+    //init pointer
+    try Pointer.init(Allocator.allocator());
     initiallized = true;
 }
 
@@ -90,6 +94,7 @@ fn deinit() void {
     UI.deinit();
     loading_screen_texture.destroy();
     heap_internal.deinit();
+
     Allocator.deinit();
 
     SDLex.fullyQuitSDL();
@@ -128,6 +133,7 @@ fn renderFrame(iteration_time: i128) void {
     renderer.clear() catch unreachable;
     heap_internal.draw(renderer, cam_view);
     stack_internal.draw(renderer, cam_view);
+    Pointer.draw(cam_view, renderer);
     UI.drawBG() catch unreachable;
     inline for (UI.elements, 0..) |element, idx| {
         element.draw(element_params[idx].*);

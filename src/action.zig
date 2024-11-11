@@ -4,12 +4,15 @@ const design = @import("design.zig");
 const app = @import("app.zig");
 const heap = @import("heap/internal.zig");
 const stack = @import("stack/internal.zig");
+const Pointer = @import("pointer.zig");
 
 pub const actions = enum(u8) {
     set_value_heap,
     search,
     allocate,
     free,
+    make_pointer,
+    remove_pointer,
     print,
     call,
     eval_function,
@@ -23,6 +26,8 @@ pub const Action = union(actions) {
     search: void,
     allocate: usize,
     free: usize,
+    make_pointer: Pointer.Pointer,
+    remove_pointer: usize,
     print: []const u8,
     call: stack.MethodData,
     eval_function: i64,
@@ -39,7 +44,9 @@ pub fn perform(action: Action) Action {
             const undo: Action = .{
                 .set_value_heap = .{ .idx = data.idx, .value = heap.mem[data.idx].val },
             };
-            heap.set(data.idx, data.value) catch {};
+            heap.set(data.idx, data.value) catch {
+                @panic("tried to set value at unavailable memory location");
+            };
             return undo;
         },
         .allocate => |idx| {
@@ -54,7 +61,13 @@ pub fn perform(action: Action) Action {
             };
             return Action{ .allocate = idx };
         },
-
+        .make_pointer => |pointer| {
+            Pointer.append(pointer);
+            return Action{ .remove_pointer = Pointer.Pointers.items.len - 1 };
+        },
+        .remove_pointer => |idx| {
+            return Action{ .make_pointer = Pointer.remove(idx) };
+        },
         .print => |str| {
             std.debug.print("{s}", .{str});
             return Action.none;

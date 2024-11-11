@@ -67,7 +67,7 @@ fn uiElement(value_type: type, makeTexture: fn (value: value_type) SDL.Texture, 
         }
     };
 }
-pub fn textElement(value_type: type, print: fn (buf: []u8, val: value_type) [:0]const u8, eventHandle: ?fn (event: *const SDL.Event, data: *value_type) void, color: SDL.Color) type {
+pub fn textElement(comptime value_type: type, print: fn (buf: []u8, val: value_type) [:0]const u8, eventHandle: ?fn (event: *const SDL.Event, data: *value_type) void, color: SDL.Color) type {
     return struct {
         element: uiElement(value_type, makeTexture, eventHandle),
 
@@ -182,6 +182,8 @@ fn actionNames(action: Action.actions) []const u8 {
         .search => "Search",
         .allocate => "Allocate",
         .free => "Free",
+        .make_pointer => "Point",
+        .remove_pointer => "clear pointer",
         .print => "Print",
         .call => "Call",
         .eval_function => "Evaluate",

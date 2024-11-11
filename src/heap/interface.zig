@@ -1,4 +1,5 @@
 const std = @import("std");
+const Pointer = @import("../pointer.zig").Pointer;
 const app = @import("../app.zig");
 const SDL = @import("sdl2");
 const Internals = @import("internal.zig");
@@ -17,14 +18,17 @@ fn blockView(idx: usize) SDL.RectangleF {
 }
 
 //calculates camera rect to view a range on the heap
-fn rangeView(start: usize, end: usize) !SDL.RectangleF {
-    const start_rect: SDL.RectangleF = Internals.blockRect(start);
+fn rangeView(start: usize, end: usize) SDL.RectangleF {
+    const real_start = @min(start, end);
+    const real_end = @max(start, end);
+
+    const start_rect: SDL.RectangleF = Internals.blockRect(real_start);
     var min_x = start_rect.x;
     var min_y = start_rect.y;
     var max_x = start_rect.x;
     var max_y = start_rect.y;
     // find the the nearest view port points for full memory visibility
-    for (start..end) |idx| {
+    for (real_start..real_end) |idx| {
         const block_rect = Internals.blockRect(idx);
         min_x = @min(min_x, block_rect.x);
         min_y = @min(min_y, block_rect.y);
@@ -50,9 +54,17 @@ fn rangeView(start: usize, end: usize) !SDL.RectangleF {
     return result;
 }
 
+pub fn setPointer(source: usize, destination: usize) void {
+    const pointer = Pointer.init(true, source, destination);
+    const animation = ZoomAnimation.init(&app.cam_view, blockView(source), rangeView(source, destination), 200_000_000);
+
+    const operation: Operation.Operation = .{ .animation = animation, .action = .{ .make_pointer = pointer }, .pause_time_nano = 200_000_000 };
+    Internals.mem_runtime[source].val = @intCast(destination);
+    app.operation_manager.push(app.Allocator.allocator(), operation);
+}
+
 pub fn set(idx: usize, value: i64) void {
-    const block_view = blockView(idx);
-    const animation = ZoomAnimation.init(&app.cam_view, null, block_view, 200_000_000);
+    const animation = ZoomAnimation.init(&app.cam_view, null, blockView(idx), 200_000_000);
 
     const operation: Operation.Operation = .{ .animation = animation, .action = .{ .set_value_heap = .{ .idx = idx, .value = value } }, .pause_time_nano = 200_000_000 };
     Internals.mem_runtime[idx].val = value;
@@ -100,7 +112,7 @@ pub fn allocate(allocator: std.mem.Allocator, size: usize) []usize {
     for (range.start..range.end) |idx| {
         Internals.mem_runtime[idx].owner = .user;
         indices.append(idx) catch unreachable;
-        const range_view = rangeView(range.start, idx + 1) catch unreachable;
+        const range_view = rangeView(range.start, idx + 1);
         const animation = ZoomAnimation.init(&app.cam_view, null, range_view, 200_000_000);
         const operation: Operation.Operation = .{ .animation = animation, .action = .{ .allocate = idx }, .pause_time_nano = 200_000_000 };
         app.operation_manager.push(app.Allocator.allocator(), operation);

@@ -24,6 +24,9 @@ pub const heap = struct {
     };
     pub const position: SDL.Point = .{ .x = -100, .y = -300 };
 };
+pub const pointer = struct {
+    pub const color = SDL.Color.rgb(255, 0, 0);
+};
 
 pub const UI = struct {
     //defined in UI init function
