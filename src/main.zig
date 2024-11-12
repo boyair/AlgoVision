@@ -29,6 +29,22 @@ const LinkedList = struct {
         self.next = new_node;
         heap.setPointer(self.mem[1], new_node.mem[0]);
     }
+
+    fn setNext(self: *Self, next: ?*LinkedList) void {
+        if (next) |nxt| {
+            heap.setPointer(self.mem[1], nxt.mem[0]);
+        } else {
+            heap.setPointer(self.mem[1], 0);
+        }
+        self.next = next;
+    }
+
+    fn removeNext(self: *Self, allocator: std.mem.Allocator) void {
+        if (self.next) |next| {
+            self.setNext(next.next);
+            heap.free(allocator, next.mem);
+        }
+    }
 };
 
 fn factorial(num: i64) i64 {
@@ -55,6 +71,7 @@ pub fn main() !void {
     const list = LinkedList.init(5, gpa.allocator());
     list.pushBack(69, gpa.allocator());
     list.next.?.pushBack(420, gpa.allocator());
+    list.removeNext(gpa.allocator());
     try app.start();
 }
 

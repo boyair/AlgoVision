@@ -9,6 +9,21 @@ const stack = @import("stack/internal.zig");
 pub var Pointers: std.ArrayList(Pointer) = undefined;
 
 pub const Source = union(enum(u8)) { stack: usize, heap: usize };
+inline fn compareSource(a: Source, b: Source) bool {
+    if (std.meta.activeTag(a) != std.meta.activeTag(b))
+        return false;
+
+    const a_inner_val = switch (a) {
+        .heap => |val| val,
+        .stack => |val| val,
+    };
+    const b_inner_val = switch (b) {
+        .heap => |val| val,
+        .stack => |val| val,
+    };
+
+    return a_inner_val == b_inner_val;
+}
 
 pub const Pointer = struct {
     source: Source,
@@ -86,20 +101,22 @@ pub fn remove(index: usize) Pointer {
     return Pointers.orderedRemove(index);
 }
 
-pub fn removeByAttribute(source: ?Source, destination: usize) void {
-    if (source) |src| {
-        for (Pointers.items, 0..) |*pointer, idx| {
-            if (pointer.source == src) {
-                _ = Pointers.orderedRemove(idx);
+pub fn removeByAttribute(source: ?Source, destination: ?usize) void {
+    if (source == null and destination == null) return;
+
+    for (Pointers.items, 0..) |*pointer, idx| {
+        const comparison = blk: {
+            var all_equal = true;
+            if (source) |src| {
+                all_equal = all_equal and compareSource(pointer.source, src);
             }
-        }
-    }
-    if (destination) |dest| {
-        for (Pointers.items, 0..) |*pointer, idx| {
-            if (pointer.destination == dest) {
-                _ = Pointers.orderedRemove(idx);
+            if (destination) |dest| {
+                all_equal = all_equal and (pointer.destination == dest);
             }
-        }
+            break :blk all_equal;
+        };
+        if (comparison)
+            _ = Pointers.orderedRemove(idx);
     }
 }
 

@@ -56,12 +56,14 @@ pub fn perform(action: Action) Action {
             return Action{ .free = idx };
         },
         .free => |idx| {
+            Pointer.removeByAttribute(.{ .heap = idx }, null); //remove the pointer if there was one from this block
             heap.free(idx) catch {
                 @panic("OP: tried to free memory that is not yours");
             };
             return Action{ .allocate = idx };
         },
         .make_pointer => |pointer| {
+            Pointer.removeByAttribute(pointer.source, null);
             Pointer.append(pointer);
             return Action{ .remove_pointer = Pointer.Pointers.items.len - 1 };
         },
