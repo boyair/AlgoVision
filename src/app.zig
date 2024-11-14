@@ -142,7 +142,8 @@ fn renderFrame(iteration_time: i128) void {
 }
 
 fn tickUpdate(last_iteration_time: i128) void {
-    operation_manager.update(@intFromFloat(@as(f128, @floatFromInt(last_iteration_time)) * playback_speed), !freecam);
+    if (playback_speed > 0)
+        operation_manager.update(@intFromFloat(@as(f128, @floatFromInt(last_iteration_time)) * playback_speed), !freecam);
     if (operation_manager.current_operation) |operation| {
         current_action = operation.data.action;
     }

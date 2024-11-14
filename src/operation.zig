@@ -165,11 +165,11 @@ pub const Manager = struct {
             const undo_node = app.Allocator.allocator().create(std.DoublyLinkedList(Action.Action).Node) catch {
                 @panic("could not allocate memory for operation.");
             };
-            undo_node.* = .{
-                .data = Action.perform(self.current_operation.?.data.action), //action performed here.
-            };
+            undo_node.data = Action.perform(self.current_operation.?.data.action); //action performed here.
             self.undo_queue.append(undo_node);
         }
+
         self.state = .done;
+        self.update(0, false);
     }
 };

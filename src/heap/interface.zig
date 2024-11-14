@@ -83,6 +83,11 @@ fn rangeView(start: usize, end: usize) SDL.RectangleF {
 
 pub fn setPointer(source: usize, destination: usize) void {
     if (Internals.mem_runtime[source].owner != .pointer and Internals.mem_runtime[source].owner != .user) @panic("tried to access non allocated memory ");
+    if (Internals.mem_runtime[source].owner == .pointer) {
+        const non_animation = ZoomAnimation.init(&app.cam_view, null, blockView(source), 0);
+        const operation: Operation.Operation = .{ .animation = non_animation, .action = .{ .remove_pointer = .{ .source = .{ .heap = source }, .destination = null } }, .pause_time_nano = 0 };
+        app.operation_manager.push(app.Allocator.allocator(), operation);
+    }
     Internals.mem_runtime[source].val = @intCast(destination);
     Internals.mem_runtime[source].owner = .pointer;
 

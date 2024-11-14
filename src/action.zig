@@ -69,7 +69,6 @@ pub fn perform(action: Action) Action {
                     heap.setOwnership(idx, .pointer) catch {
                         @panic("OP: tried to set pointer from memory that is not yours");
                     };
-                    std.debug.print("set to pointer {d}\n", .{idx});
                 },
                 .stack => |_| {},
             }
@@ -81,7 +80,6 @@ pub fn perform(action: Action) Action {
             switch (node.data.source) {
                 .heap => |idx| {
                     heap.setOwnership(idx, .user) catch unreachable;
-                    std.debug.print("set to pointer {d}\n", .{idx});
                 },
                 .stack => |_| {},
             }
