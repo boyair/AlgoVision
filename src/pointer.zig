@@ -6,7 +6,7 @@ const Design = @import("design.zig");
 const View = @import("view.zig").View;
 const heap = @import("heap/internal.zig");
 const stack = @import("stack/internal.zig");
-pub var Pointers: std.ArrayList(Pointer) = undefined;
+pub var Pointers: std.DoublyLinkedList(Pointer) = undefined;
 
 pub const Source = union(enum(u8)) { stack: usize, heap: usize };
 inline fn compareSource(a: Source, b: Source) bool {
@@ -68,60 +68,81 @@ pub const Pointer = struct {
     }
 };
 
-pub fn init(allocator: std.mem.Allocator) !void {
-    Pointers = try std.ArrayList(Pointer).initCapacity(allocator, 10);
+//removes all pointers sourced in unallocated memory.
+pub fn update() void {
+    var it = Pointers.first;
+    while (it) |node| : (it = node.next) {
+        const source = node.data.source;
+        switch (source) {
+            .heap => |idx| {
+                if (heap.mem[idx].owner != .pointer) {
+                    std.debug.print("removed node\n", .{});
+                    Pointers.remove(node);
+                }
+            },
+            .stack => |_| {},
+        }
+    }
 }
+pub fn init() !void {}
 
 pub fn deinit() void {
     Pointers.deinit();
 }
 
-pub fn append(pointer: Pointer) void {
-    var safe_ptr: Pointer = pointer;
-    if (safe_ptr.line == null)
-        _ = safe_ptr.generateLine();
-    Pointers.append(safe_ptr) catch {
-        @panic("allocator out of memory.");
-    };
-    switch (safe_ptr.source) {
+pub fn append(pointer: Pointer, allocator: std.mem.Allocator) *std.DoublyLinkedList(Pointer).Node {
+    var safe_ptr: *std.DoublyLinkedList(Pointer).Node = allocator.create(std.DoublyLinkedList(Pointer).Node) catch unreachable;
+    safe_ptr.data = pointer;
+    var data = safe_ptr.data;
+    if (data.line == null)
+        _ = data.generateLine();
+    Pointers.append(safe_ptr);
+    switch (data.source) {
         .heap => |idx| {
-            heap.set(idx, @intCast(safe_ptr.destination)) catch {
+            heap.set(idx, @intCast(data.destination)) catch {
                 @panic("tried to set value at unavailable memory location");
             };
         },
         .stack => |idx| {
-            heap.set(idx, @intCast(safe_ptr.destination)) catch {
+            heap.set(idx, @intCast(data.destination)) catch {
                 @panic("tried to set value at unavailable memory location");
             };
         },
     }
+    return safe_ptr;
 }
 
-pub fn remove(index: usize) Pointer {
-    return Pointers.orderedRemove(index);
+pub fn remove(node: *std.DoublyLinkedList(Pointer).Node) Pointer {
+    const pointer = node.data;
+    if (Pointers.len > 0)
+        Pointers.remove(node);
+    return pointer;
 }
 
-pub fn removeByAttribute(source: ?Source, destination: ?usize) void {
-    if (source == null and destination == null) return;
-
-    for (Pointers.items, 0..) |*pointer, idx| {
+pub fn getByAttribute(source: ?Source, destination: ?usize) ?*std.DoublyLinkedList(Pointer).Node {
+    if (source == null and destination == null) return null;
+    var it = Pointers.first;
+    while (it) |node| : (it = node.next) {
         const comparison = blk: {
             var all_equal = true;
             if (source) |src| {
-                all_equal = all_equal and compareSource(pointer.source, src);
+                all_equal = all_equal and compareSource(node.data.source, src);
             }
             if (destination) |dest| {
-                all_equal = all_equal and (pointer.destination == dest);
+                all_equal = all_equal and (node.data.destination == dest);
             }
             break :blk all_equal;
         };
-        if (comparison)
-            _ = Pointers.orderedRemove(idx);
+        if (comparison) {
+            return node;
+        }
     }
+    return null;
 }
 
 pub fn draw(view: View, renderer: SDL.Renderer) void {
-    for (Pointers.items) |pointer| {
-        view.drawLine(pointer.line.?, Design.pointer.color, renderer);
+    var it = Pointers.first;
+    while (it) |node| : (it = node.next) {
+        view.drawLine(node.data.line.?, Design.pointer.color, renderer);
     }
 }

@@ -1,5 +1,5 @@
 const std = @import("std");
-const Pointer = @import("../pointer.zig").Pointer;
+const Pointer = @import("../pointer.zig");
 const app = @import("../app.zig");
 const SDL = @import("sdl2");
 const Internals = @import("internal.zig");
@@ -55,11 +55,13 @@ fn rangeView(start: usize, end: usize) SDL.RectangleF {
 }
 
 pub fn setPointer(source: usize, destination: usize) void {
-    const pointer = Pointer.init(true, source, destination);
-    const animation = ZoomAnimation.init(&app.cam_view, blockView(source), rangeView(source, destination), 200_000_000);
-
-    const operation: Operation.Operation = .{ .animation = animation, .action = .{ .make_pointer = pointer }, .pause_time_nano = 200_000_000 };
+    if (Internals.mem_runtime[source].owner != .pointer and Internals.mem_runtime[source].owner != .user) @panic("tried to access non allocated memory ");
     Internals.mem_runtime[source].val = @intCast(destination);
+    Internals.mem_runtime[source].owner = .pointer;
+
+    const pointer = Pointer.Pointer.init(true, source, destination);
+    const animation = ZoomAnimation.init(&app.cam_view, blockView(source), rangeView(source, destination), 200_000_000);
+    const operation: Operation.Operation = .{ .animation = animation, .action = .{ .make_pointer = pointer }, .pause_time_nano = 200_000_000 };
     app.operation_manager.push(app.Allocator.allocator(), operation);
 }
 
@@ -92,22 +94,22 @@ pub fn allocate(allocator: std.mem.Allocator, size: usize) []usize {
         @panic("could not find large enough buffer");
     };
 
-    var rng = std.Random.DefaultPrng.init(blk: {
-        var seed: u64 = undefined;
-        std.crypto.random.bytes(std.mem.asBytes(&seed));
-        break :blk seed;
-    });
+    //   var rng = std.Random.DefaultPrng.init(blk: {
+    //       var seed: u64 = undefined;
+    //       std.crypto.random.bytes(std.mem.asBytes(&seed));
+    //       break :blk seed;
+    //   });
 
-    // Get a Random interface
-    const random = rng.random();
+    //   // Get a Random interface
+    //   const random = rng.random();
 
-    for (0..5) |_| {
-        const idx = @mod(@abs(random.int(i64)), Internals.mem.len - size);
-        const block_view = blockView(idx);
-        const animation = ZoomAnimation.init(&app.cam_view, null, block_view, 200_000_000);
-        const operation: Operation.Operation = .{ .animation = animation, .action = .{ .search = {} }, .pause_time_nano = 200_000_000 };
-        app.operation_manager.push(app.Allocator.allocator(), operation);
-    }
+    //   for (0..5) |_| {
+    //       const idx = @mod(@abs(random.int(i64)), Internals.mem.len - size);
+    //       const block_view = blockView(idx);
+    //       const animation = ZoomAnimation.init(&app.cam_view, null, block_view, 200_000_000);
+    //       const operation: Operation.Operation = .{ .animation = animation, .action = .{ .search = {} }, .pause_time_nano = 200_000_000 };
+    //       app.operation_manager.push(app.Allocator.allocator(), operation);
+    //   }
     var indices = std.ArrayList(usize).init(allocator);
     for (range.start..range.end) |idx| {
         Internals.mem_runtime[idx].owner = .user;
@@ -122,9 +124,17 @@ pub fn allocate(allocator: std.mem.Allocator, size: usize) []usize {
 
 pub fn free(allocator: std.mem.Allocator, indices: []usize) void {
     for (indices) |idx| {
-        if (Internals.mem_runtime[idx].owner == .user) {
+        if (Internals.mem_runtime[idx].owner == .user or Internals.mem_runtime[idx].owner == .pointer) {
+            if (Internals.mem_runtime[idx].owner == .pointer) {
+                //const pointer_to_remove = Pointer.getByAttribute(.{ .heap = idx }, null);
+                const non_animation = ZoomAnimation.init(&app.cam_view, null, blockView(idx), 0);
+                const operation: Operation.Operation = .{ .animation = non_animation, .action = .{ .remove_pointer = .{ .source = .{ .heap = idx }, .destination = null } }, .pause_time_nano = 0 };
+                app.operation_manager.push(app.Allocator.allocator(), operation);
+            }
+
             Internals.mem_runtime[idx].owner = .free;
             const animation = ZoomAnimation.init(&app.cam_view, null, blockView(idx), 200_000_000);
+
             const operation: Operation.Operation = .{ .animation = animation, .action = .{ .free = idx }, .pause_time_nano = 200_000_000 };
             app.operation_manager.push(app.Allocator.allocator(), operation);
         } else @panic("failed to free memory: not allocated");

@@ -13,12 +13,20 @@ const Ownership = enum(u8) {
     free, //block is available for allocation.
     taken, //block is used by another program.
     user, //block is allocated by user and can be used.
-
+    pointer, //block is allocated and used as a pointer.
 };
 
 const block = struct {
     val: i64,
     owner: Ownership,
+
+    fn bufPrintZ(self: block, buffer: []u8) [:0]const u8 {
+        if (self.owner == .pointer) {
+            return std.fmt.bufPrintZ(buffer, "0x{x:>5}", .{self.val}) catch "???";
+        } else {
+            return std.fmt.bufPrintZ(buffer, "{d:>5}", .{self.val}) catch "???";
+        }
+    }
 };
 
 //struct to simplify 2d indexing
@@ -148,7 +156,7 @@ fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
             if (row >= rows or column >= columns)
                 continue;
 
-            const num_str = std.fmt.bufPrintZ(&text_buffer, "{d:>5}", .{mem[idx1].val}) catch "???";
+            const num_str = mem[idx1].bufPrintZ(&text_buffer);
             // color tuning
             const colors = getColors(idx1);
 
@@ -219,7 +227,7 @@ fn updateValue(index: idx2D, renderer: SDL.Renderer) !void {
     defer renderer.setTarget(last_target) catch {
         @panic("could not  set renderer target");
     };
-    const num_str = std.fmt.bufPrintZ(&text_buffer, "{d:>5}", .{mem[index.to1D(columns)].val}) catch "???";
+    const num_str = mem[index.to1D(columns)].bufPrintZ(&text_buffer);
     //std.debug.print("num_str: {s}\n", .{num_str});
     const owning_batch = batchOf(index.to1D(columns));
     const owning_batch_texture = batch_tex[owning_batch.y][owning_batch.x];
@@ -316,6 +324,7 @@ fn signalBatchUpdate(batch: idx2D) void {
     }
     texture_update_mut.unlock();
 }
+//recreate texture of the value block.
 fn signalValueUpdate(val: idx2D) void {
     texture_update_mut.lock();
     defer texture_update_mut.unlock();
@@ -327,13 +336,18 @@ fn signalValueUpdate(val: idx2D) void {
 pub fn set(idx: usize, value: i64) !void {
     if (idx >= mem.len)
         return HeapError.OutOfRange;
-    if (mem[idx].owner == Ownership.user) {
+    if (mem[idx].owner == .user or mem[idx].owner == .pointer) {
         mem[idx].val = value;
     } else {
         return HeapError.MemoryNotAllocated;
     }
-
-    //recreate texture of the batch containing the value.
+    signalValueUpdate(idx2D.init(idx, columns));
+}
+pub fn setOwnership(idx: usize, ownership: Ownership) !void {
+    if (mem[idx].owner == ownership) return;
+    if (mem[idx].owner != .user and ownership == .pointer)
+        return HeapError.MemoryNotAllocated;
+    mem[idx].owner = ownership;
     signalValueUpdate(idx2D.init(idx, columns));
 }
 
@@ -347,9 +361,11 @@ pub fn allocate(idx: usize) HeapError!void {
 
 //TODO make freeing set a garbage value to prevent reuse.
 pub fn free(idx: usize) HeapError!void {
-    if (mem[idx].owner != Ownership.user) {
+    if (mem[idx].owner != Ownership.user and mem[idx].owner != Ownership.pointer) {
         return HeapError.MemoryNotAllocated;
     }
+    if (mem[idx].owner == .free)
+        std.debug.print("freed pointer: {d}", .{idx});
     mem[idx].owner = Ownership.free;
     signalValueUpdate(idx2D.init(idx, columns));
 }
@@ -368,7 +384,7 @@ fn getColors(idx: usize) design.block.Colors {
     return switch (mem[idx].owner) {
         .free => design.block.free,
         .taken => design.block.taken,
-        .user => design.block.user,
+        .user, .pointer => design.block.user,
     };
 }
 
@@ -403,7 +419,6 @@ pub fn findRandFreeRange(size: usize) HeapError!struct { start: usize, end: usiz
 
     if (!found)
         return HeapError.MemoryNotAvailable;
-    std.debug.print("start: {d}, end: {d}", .{ .start = start_idx, .end = end_idx });
     return .{ .start = start_idx, .end = end_idx };
 }
 pub fn findFreeRange(size: usize) HeapError!struct { start: usize, end: usize } {

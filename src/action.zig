@@ -1,5 +1,7 @@
 const std = @import("std");
 const SDL = @import("sdl2");
+const operation = @import("operation.zig");
+const animation = @import("animation.zig");
 const design = @import("design.zig");
 const app = @import("app.zig");
 const heap = @import("heap/internal.zig");
@@ -27,7 +29,7 @@ pub const Action = union(actions) {
     allocate: usize,
     free: usize,
     make_pointer: Pointer.Pointer,
-    remove_pointer: usize,
+    remove_pointer: struct { source: ?Pointer.Source, destination: ?usize }, //pointer attributes.
     print: []const u8,
     call: stack.MethodData,
     eval_function: i64,
@@ -56,19 +58,34 @@ pub fn perform(action: Action) Action {
             return Action{ .free = idx };
         },
         .free => |idx| {
-            Pointer.removeByAttribute(.{ .heap = idx }, null); //remove the pointer if there was one from this block
             heap.free(idx) catch {
                 @panic("OP: tried to free memory that is not yours");
             };
             return Action{ .allocate = idx };
         },
         .make_pointer => |pointer| {
-            Pointer.removeByAttribute(pointer.source, null);
-            Pointer.append(pointer);
-            return Action{ .remove_pointer = Pointer.Pointers.items.len - 1 };
+            switch (pointer.source) {
+                .heap => |idx| {
+                    heap.setOwnership(idx, .pointer) catch {
+                        @panic("OP: tried to set pointer from memory that is not yours");
+                    };
+                    std.debug.print("set to pointer {d}\n", .{idx});
+                },
+                .stack => |_| {},
+            }
+            const node = Pointer.append(pointer, app.Allocator.allocator());
+            return Action{ .remove_pointer = .{ .source = node.data.source, .destination = node.data.destination } };
         },
-        .remove_pointer => |idx| {
-            return Action{ .make_pointer = Pointer.remove(idx) };
+        .remove_pointer => |attributes| {
+            const node = Pointer.getByAttribute(attributes.source, attributes.destination) orelse unreachable;
+            switch (node.data.source) {
+                .heap => |idx| {
+                    heap.setOwnership(idx, .user) catch unreachable;
+                    std.debug.print("set to pointer {d}\n", .{idx});
+                },
+                .stack => |_| {},
+            }
+            return Action{ .make_pointer = Pointer.remove(node) };
         },
         .print => |str| {
             std.debug.print("{s}", .{str});

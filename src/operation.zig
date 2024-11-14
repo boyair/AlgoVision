@@ -70,6 +70,16 @@ pub const Manager = struct {
             self.animation_state = self.current_operation.?.data.animation;
         }
     }
+    pub fn insertNext(self: *This, allocator: std.mem.Allocator, operation: Operation) void {
+        const node = allocator.create(std.DoublyLinkedList(Operation).Node) catch {
+            @panic("could not allocate memory for operation.");
+        };
+
+        node.* = .{
+            .data = operation,
+        };
+        self.operation_queue.insertAfter(self.current_operation.?, node);
+    }
 
     pub fn update(self: *This, delta_time: i128, animate: bool) void {
         if (self.current_operation) |current_operation| {

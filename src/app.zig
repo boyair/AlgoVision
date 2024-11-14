@@ -83,7 +83,7 @@ pub fn init() !void {
     try stack_internal.init();
 
     //init pointer
-    try Pointer.init(Allocator.allocator());
+    try Pointer.init();
     initiallized = true;
 }
 
