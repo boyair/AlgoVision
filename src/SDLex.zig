@@ -1,5 +1,5 @@
 const dprint = @import("std").debug.print;
-const SDL = @import("sdl2");
+const SDL = @import("SDL");
 const Vec2 = @import("Vec2.zig").Vec2;
 const os = @import("builtin").os;
 const std = @import("std");

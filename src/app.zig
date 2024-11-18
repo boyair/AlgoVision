@@ -1,6 +1,6 @@
 const Vec2 = @import("Vec2.zig").Vec2;
 const std = @import("std");
-const SDL = @import("sdl2");
+const SDL = @import("SDL");
 const SDLex = @import("SDLex.zig");
 const View = @import("view.zig").View;
 pub const heap = @import("heap/interface.zig");

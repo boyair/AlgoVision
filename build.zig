@@ -28,7 +28,7 @@ pub fn build(b: *std.Build) void {
     });
 
     // Add "sdl2" package that exposes the SDL2 api (like SDL_Init or SDL_CreateWindow)
-    exe.root_module.addImport("sdl2", sdk.getWrapperModule());
+    exe.root_module.addImport("SDL", sdk.getWrapperModule());
     //link system installed sdl extra libs for proper linkage.
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default

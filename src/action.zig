@@ -1,5 +1,5 @@
 const std = @import("std");
-const SDL = @import("sdl2");
+const SDL = @import("SDL");
 const operation = @import("operation.zig");
 const animation = @import("animation.zig");
 const design = @import("design.zig");

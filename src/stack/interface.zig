@@ -1,6 +1,6 @@
 const std = @import("std");
 const app = @import("../app.zig");
-const SDL = @import("sdl2");
+const SDL = @import("SDL");
 const Internals = @import("internal.zig");
 const View = @import("../view.zig").View;
 const Operation = @import("../operation.zig");

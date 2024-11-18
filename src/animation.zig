@@ -1,4 +1,4 @@
-const SDL = @import("sdl2");
+const SDL = @import("SDL");
 const std = @import("std");
 const View = @import("view.zig").View;
 

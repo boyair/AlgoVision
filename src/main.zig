@@ -1,5 +1,5 @@
 const std = @import("std");
-const SDL = @import("sdl2");
+const SDL = @import("SDL");
 const Vec2 = @import("Vec2.zig").Vec2;
 const View = @import("view.zig").View;
 const SDLex = @import("SDLex.zig");

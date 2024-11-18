@@ -1,4 +1,4 @@
-const SDL = @import("sdl2");
+const SDL = @import("SDL");
 const View = @import("view.zig").View;
 pub var BG_color: SDL.Color = SDL.Color.rgb(90, 90, 90);
 pub const FPS = 144;
