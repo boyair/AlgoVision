@@ -10,7 +10,6 @@ const Pointer = @import("pointer.zig");
 
 pub const actions = enum(u8) {
     set_value_heap,
-    search,
     allocate,
     free,
     make_pointer,
@@ -25,7 +24,6 @@ pub const actions = enum(u8) {
 };
 pub const Action = union(actions) {
     set_value_heap: struct { idx: usize, value: i64 },
-    search: void,
     allocate: usize,
     free: usize,
     make_pointer: Pointer.Pointer,

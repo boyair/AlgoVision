@@ -179,7 +179,6 @@ fn printAction(buf: []u8, action: Action.actions) [:0]const u8 {
 fn actionNames(action: Action.actions) []const u8 {
     return switch (action) {
         .set_value_heap => "Set value",
-        .search => "Search",
         .allocate => "Allocate",
         .free => "Free",
         .make_pointer => "Point",
