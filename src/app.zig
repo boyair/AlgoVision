@@ -113,10 +113,6 @@ pub fn start() !void {
     repeatTimed(renderFrame, frame_time_nano);
 }
 
-const example: Vec2 = .{
-    .x = 9,
-    .y = 7,
-};
 const element_params = .{
     &playback_speed,
     &current_action,
@@ -135,8 +131,8 @@ fn renderFrame(iteration_time: i128) void {
     stack_internal.draw(renderer, cam_view);
     Pointer.draw(cam_view, renderer);
     UI.drawBG() catch unreachable;
-    inline for (UI.elements, 0..) |element, idx| {
-        element.draw(element_params[idx].*);
+    inline for (UI.elements, element_params) |element, param| {
+        element.draw(param.*);
     }
     renderer.present();
 }
@@ -191,8 +187,8 @@ fn tickUpdate(last_iteration_time: i128) void {
             },
             else => {},
         }
-        inline for (UI.elements, 0..) |element, idx| {
-            element.handleEvent(&ev, mouse_pos, element_params[idx]);
+        inline for (UI.elements, element_params) |element, param| {
+            element.handleEvent(&ev, mouse_pos, param);
         }
     }
 }
