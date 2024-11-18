@@ -43,6 +43,11 @@
         //    // actually used.
         //    .lazy = false,
         //},
+        .SDL = .{
+            .url = "https://github.com/ikskuh/SDL.zig/archive/fac81ec499cfd64da7b846de27f6db4a0d4943bf.tar.gz",
+            .hash = "12206c3d312175cf6a1bf1e8247ace5ac49ed8be80a94d8857d7d41fd7d1aee7ac4b",
+            .lazy = false,
+        },
     },
 
     // Specifies the set of files and directories that are included in this package.
