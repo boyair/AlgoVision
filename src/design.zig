@@ -9,7 +9,7 @@ pub const heap = struct {
     pub var font: SDL.ttf.Font = undefined;
 
     pub const block = struct {
-        pub const size: SDL.Size = .{ .width = 100, .height = 100 };
+        pub const size: SDL.Size = .{ .width = 88, .height = 88 };
         pub const padding: SDL.Size = .{ .width = 12, .height = 12 };
         pub const full_size: SDL.Size = .{ .width = size.width + padding.width, .height = size.height + padding.height };
         pub const grid_color: SDL.Color = SDL.Color.black;
@@ -22,10 +22,10 @@ pub const heap = struct {
         pub const taken = Colors{ .fg = SDL.Color.red, .bg = SDL.Color.black };
         pub const user = Colors{ .fg = SDL.Color.red, .bg = SDL.Color.blue };
     };
-    pub const position: SDL.Point = .{ .x = -100, .y = -300 };
+    pub const position: SDL.Point = .{ .x = 0, .y = 0 };
 };
 pub const pointer = struct {
-    pub const color = SDL.Color.rgb(255, 0, 0);
+    pub var arrow: SDL.Texture = undefined;
 };
 
 pub const UI = struct {

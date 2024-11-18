@@ -1,9 +1,13 @@
+const math = @import("std").math;
 pub const Vec2 = struct {
     x: f32,
     y: f32,
 
     pub fn init(x: f32, y: f32) Vec2 {
         return Vec2{ .x = x, .y = y };
+    }
+    pub fn getAngle(self: Vec2) f32 {
+        return math.atan2(self.y, self.x);
     }
     pub fn div(self: Vec2, divisor: Vec2) !Vec2 {
         if (divisor.x == 0 or divisor.y == 0) {

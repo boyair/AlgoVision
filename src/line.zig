@@ -8,6 +8,12 @@ pub const Line = struct {
     pub fn Length(self: Self) f32 {
         const xdiff = std.math.pow(f32, self.end.x - self.start.x, 2);
         const ydiff = std.math.pow(f32, self.end.y - self.start.y, 2);
-        return std.math.sqrt2(xdiff + ydiff);
+        return std.math.sqrt(xdiff + ydiff);
+    }
+    pub fn diffx(self: Self) f32 {
+        return self.end.x - self.start.x;
+    }
+    pub fn diffy(self: Self) f32 {
+        return self.end.y - self.start.y;
     }
 };

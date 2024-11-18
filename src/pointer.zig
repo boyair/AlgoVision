@@ -2,6 +2,7 @@ const Vec2 = @import("Vec2.zig").Vec2;
 const Line = @import("line.zig").Line;
 const std = @import("std");
 const SDL = @import("SDL");
+const SDLex = @import("SDLex.zig");
 const Design = @import("design.zig");
 const View = @import("view.zig").View;
 const heap = @import("heap/internal.zig");
@@ -39,32 +40,31 @@ pub const Pointer = struct {
 
     pub fn generateLine(self: *Self) Line {
         const source = self.source;
-        const end = blk: {
-            const rect = heap.blockRect(self.destination);
-            break :blk Vec2{ .x = rect.x, .y = rect.y };
-        };
+        const end_rect = heap.blockRect(self.destination);
 
-        const line: Line =
+        const start: Vec2 =
             switch (source) {
             .stack => |idx| stack: {
-                const start = blk: {
-                    const y = Design.stack.position.y -
-                        idx * Design.stack.method.size.height;
-                    const x = Design.stack.position.x + Design.stack.method.size.width;
-                    break :blk Vec2{ .x = @floatFromInt(x), .y = @floatFromInt(y) };
-                };
-                break :stack Line{ .start = start, .end = end };
+                const y = Design.stack.position.y -
+                    idx * Design.stack.method.size.height;
+                const x = Design.stack.position.x + Design.stack.method.size.width;
+                break :stack Vec2{ .x = @floatFromInt(x), .y = @floatFromInt(y) };
             },
             .heap => |idx| heap: {
-                const start = blk: {
-                    const rect = heap.blockRect(idx);
-                    break :blk Vec2{ .x = rect.x, .y = rect.y };
+                const rect = heap.blockRect(idx);
+                const nearest_corner = Vec2{
+                    .x = if (rect.x > end_rect.x) rect.x else rect.x + rect.width,
+                    .y = if (rect.y > end_rect.y) rect.y else rect.y + rect.height,
                 };
-                break :heap Line{ .start = start, .end = end };
+                break :heap nearest_corner;
             },
         };
-        self.line = line;
-        return line;
+        const end = Vec2{
+            .x = if (end_rect.x >= start.x) end_rect.x else end_rect.x + end_rect.width,
+            .y = if (end_rect.y >= start.y) end_rect.y else end_rect.y + end_rect.height,
+        };
+        self.line = .{ .start = start, .end = end };
+        return self.line.?;
     }
 };
 
@@ -84,7 +84,9 @@ pub fn update() void {
         }
     }
 }
-pub fn init() !void {}
+pub fn init(exe_path: []const u8, renderer: SDL.Renderer) !void {
+    Design.pointer.arrow = try SDLex.loadResource(exe_path, "/textures/pointer.png", renderer);
+}
 
 pub fn deinit() void {
     Pointers.deinit();
@@ -143,6 +145,21 @@ pub fn getByAttribute(source: ?Source, destination: ?usize) ?*std.DoublyLinkedLi
 pub fn draw(view: View, renderer: SDL.Renderer) void {
     var it = Pointers.first;
     while (it) |node| : (it = node.next) {
-        view.drawLine(node.data.line.?, Design.pointer.color, renderer);
+        //drawLine(view, renderer);
+        drawPointer(&node.data, view, renderer);
     }
+}
+
+pub fn drawPointer(pointer: *Pointer, view: View, renderer: SDL.Renderer) void {
+    const line: Line = if (pointer.line) |ln| ln else pointer.generateLine();
+    const diff = Vec2{ .x = line.diffx(), .y = line.diffy() };
+    const distance = line.Length();
+    std.debug.print("distance: {d}\n", .{distance});
+    const arrow_length = 100;
+    const reduced_distance = distance - arrow_length;
+    const intersectionX = line.start.x + diff.x * reduced_distance / distance;
+    const intersectionY = line.start.y + diff.y * reduced_distance / distance;
+    std.debug.print("x: {d} ,y: {d} - angle: {d}\n", .{ diff.x, diff.y, diff.getAngle() });
+    view.drawLine(.{ .start = line.start, .end = .{ .x = intersectionX, .y = intersectionY } }, SDL.Color.red, renderer);
+    view.drawEx(.{ .x = intersectionX, .y = intersectionY - 25, .width = 100, .height = 50 }, Design.pointer.arrow, renderer, diff.getAngle() * 180 / std.math.pi, .{ .x = 0, .y = 0.5 }, .none);
 }

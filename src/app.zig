@@ -83,7 +83,7 @@ pub fn init() !void {
     try stack_internal.init();
 
     //init pointer
-    try Pointer.init();
+    try Pointer.init(exe_path, renderer);
     initiallized = true;
 }
 

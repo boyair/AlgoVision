@@ -137,6 +137,18 @@ pub const View = struct {
         }
     }
 
+    pub fn drawEx(self: View, rect: SDL.RectangleF, texture: SDL.Texture, renderer: SDL.Renderer, angle: f64, center: ?Vec2, flip: SDL.RendererFlip) void {
+        const transformed = self.convert(rect) catch null;
+
+        if (transformed) |in_view| {
+            const center_point: ?SDL.Point = if (center) |cntr| SDL.Point{
+                .x = @intFromFloat(in_view.width * cntr.x),
+                .y = @intFromFloat(in_view.height * cntr.y),
+            } else null;
+            renderer.copyEx(texture, SDLex.convertSDLRect(in_view), null, angle, center_point, flip) catch unreachable;
+        }
+    }
+
     pub fn drawLine(self: View, line: Line, color: SDL.Color, renderer: SDL.Renderer) void {
         const transformed = blk: {
             const start = self.convertVec(line.start);
