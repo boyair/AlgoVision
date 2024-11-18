@@ -9,12 +9,16 @@ pub fn build(b: *std.Build) void {
     // means any target is allowed, and the default is native. Other options
     // for restricting supported target set are available.
     const target = b.standardTargetOptions(.{});
-    const sdk = Sdk.init(b, null, null);
 
     // Standard optimization options allow the person running `zig build` to select
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall. Here we do not
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
+
+    const sdk = Sdk.init(b, null, null);
+
+    const asset_path = b.path("assets/");
+    b.installDirectory(.{ .source_dir = asset_path, .install_dir = .{ .bin = {} }, .install_subdir = "./" });
 
     const exe = b.addExecutable(.{
         .name = "visualiser",
