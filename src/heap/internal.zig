@@ -6,8 +6,8 @@ const Operation = @import("../operation.zig");
 const Vec2 = @import("../Vec2.zig").Vec2;
 const SDLex = @import("../SDLex.zig");
 const design = @import("../design.zig").heap;
-pub const rows = 3;
-pub const columns = 6;
+pub const rows = 2;
+pub const columns = 20;
 const Ownership = enum(u8) {
     free, //block is available for allocation.
     taken, //block is used by another program.
@@ -54,8 +54,9 @@ pub var mem_runtime: [rows * columns]block = undefined;
 var batches_to_update: std.AutoHashMap(idx2D, void) = undefined;
 var values_to_update: std.AutoHashMap(idx2D, void) = undefined;
 
-const batch_size: SDL.Size = .{ .width = std.math.sqrt(rows), .height = std.math.sqrt(columns) };
-pub var batch_tex: [rows / batch_size.width + 1][columns / batch_size.height + 1]SDL.Texture = undefined; // textures of the numbers batched for performance
+const batch_size: SDL.Size = .{ .width = std.math.sqrt(columns), .height = std.math.sqrt(rows) };
+const batch_pixel_size: SDL.Size = .{ .width = batch_size.width * design.block.full_size.width, .height = batch_size.height * design.block.full_size.height };
+pub var batch_tex: [rows / batch_size.height + 1][columns / batch_size.width + 1]SDL.Texture = undefined; // textures of the numbers batched for performance
 
 pub fn init(renderer: SDL.Renderer, allocator: std.mem.Allocator) void {
     design.font = SDLex.loadResource(app.exe_path, "/ioveska.ttf", app.renderer) catch {
@@ -185,13 +186,14 @@ fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
         var rect = SDL.Rectangle{
             .x = 0,
             .y = @intCast(@as(c_int, @intCast(row * design.block.full_size.height)) - design.block.padding.height / 4),
-            .width = @intCast(design.block.full_size.width * batch_size.width + design.block.padding.width),
+            .width = @intCast(batch_pixel_size.width + design.block.padding.width),
             .height = design.block.padding.height / 2,
         };
 
         //prevent grid drawing on empty texture
-        const batch_limit_width = max_width - batch_size.width * design.block.full_size.width * index.x;
-        const batch_limit_height = max_height - batch_size.height * design.block.full_size.height * index.y;
+        std.debug.print("index: {d}, {d}\n", index);
+        const batch_limit_width = max_width - batch_pixel_size.width * index.x;
+        const batch_limit_height = max_height - batch_pixel_size.height * index.y;
         rect.width = @intCast(@min(batch_limit_width, @as(usize, @intCast(rect.width))));
 
         if (batch_limit_height > rect.y)
@@ -202,12 +204,12 @@ fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
         var rect = SDL.Rectangle{
             .y = 0,
             .x = @intCast(@as(c_int, @intCast(column * design.block.full_size.width)) - design.block.padding.width / 4),
-            .height = @intCast(design.block.full_size.height * batch_size.height + design.block.padding.height),
+            .height = @intCast(batch_pixel_size.height + design.block.padding.height),
             .width = design.block.padding.width / 2,
         };
         //prevent grid drawing on empty texture
-        const batch_limit_width = max_width - batch_size.width * design.block.full_size.width * index.x;
-        const batch_limit_height = max_height - batch_size.height * design.block.full_size.height * index.y;
+        const batch_limit_width = max_width - batch_pixel_size.width * index.x;
+        const batch_limit_height = max_height - batch_pixel_size.height * index.y;
         rect.height = @intCast(@min(batch_limit_height, @as(usize, @intCast(rect.height))));
 
         if (rect.x < batch_limit_width)
