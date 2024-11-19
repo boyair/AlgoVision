@@ -154,6 +154,10 @@ pub fn drawPointer(pointer: *Pointer, view: View, renderer: SDL.Renderer) void {
     const line: Line = if (pointer.line) |ln| ln else pointer.generateLine();
     const diff = Vec2{ .x = line.diffx(), .y = line.diffy() };
     const distance = line.Length();
+    if (distance < 120) {
+        view.drawLine(line, SDL.Color.red, renderer);
+        return;
+    }
     std.debug.print("distance: {d}\n", .{distance});
     const arrow_length = 100;
     const reduced_distance = distance - arrow_length;

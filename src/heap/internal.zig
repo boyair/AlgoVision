@@ -6,8 +6,8 @@ const Operation = @import("../operation.zig");
 const Vec2 = @import("../Vec2.zig").Vec2;
 const SDLex = @import("../SDLex.zig");
 const design = @import("../design.zig").heap;
-pub const rows = 60;
-pub const columns = 60;
+pub const rows = 3;
+pub const columns = 6;
 const Ownership = enum(u8) {
     free, //block is available for allocation.
     taken, //block is used by another program.
@@ -400,13 +400,20 @@ pub fn findRandFreeRange(size: usize) HeapError!struct { start: usize, end: usiz
 
     // Get a Random interface
     const random = rng.random();
-    main: while (true) {
-        start_idx = @mod(@abs(random.int(i64)), mem_runtime.len - size);
-        if (mem_runtime[start_idx].owner != .free) continue;
-
+    const search_start = @mod(@abs(random.int(i64)), mem_runtime.len - size);
+    start_idx = search_start;
+    main: while (start_idx >= search_start or start_idx < search_start - size) : (start_idx %= mem_runtime.len) {
+        if (mem_runtime[start_idx].owner != .free) {
+            start_idx += 1;
+            continue;
+        }
         for (start_idx..start_idx + size) |Eidx| {
-            if (mem_runtime[Eidx].owner != .free)
+            if (Eidx >= mem_runtime.len)
                 break;
+            if (mem_runtime[Eidx].owner != .free) {
+                start_idx = Eidx + 1;
+                break;
+            }
             const true_end = Eidx + 1;
             if (size <= true_end - start_idx) {
                 found = true;
