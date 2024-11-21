@@ -85,6 +85,8 @@ pub fn init() !void {
     //init pointer
     try Pointer.init(exe_path, renderer);
     initiallized = true;
+    //init action
+    try Operation.Action.init();
 }
 
 fn deinit() void {

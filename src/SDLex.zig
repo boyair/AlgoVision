@@ -1,5 +1,6 @@
 const dprint = @import("std").debug.print;
 const SDL = @import("SDL");
+const sound = @import("sound.zig");
 const Vec2 = @import("Vec2.zig").Vec2;
 const os = @import("builtin").os;
 const std = @import("std");
@@ -16,6 +17,8 @@ pub fn fullyInitSDL() !void {
     //init SDL
     try SDL.init(SDL.InitFlags.everything);
     try SDL.ttf.init();
+
+    try sound.init();
 }
 
 pub fn fullyQuitSDL() void {
@@ -37,11 +40,11 @@ pub fn loadResource(exe_path: []const u8, comptime relative_path: []const u8, re
         SDL.ttf.Font => {
             return SDL.ttf.openFont(full_path, 150);
         },
-        SDL.Wav => {
-            return SDL.loadWav(full_path);
+        sound.Wav => {
+            return sound.Wav.init(full_path);
         },
         else => {
-            @compileLog("got unknown resource type");
+            @compileError("got unknown resource type");
         },
     }
 }
@@ -56,7 +59,7 @@ fn resourceType(comptime path: []const u8) type {
     } else if (std.mem.eql(u8, format, ".ttf")) {
         return SDL.ttf.Font;
     } else if (std.mem.eql(u8, format, ".wav")) {
-        return SDL.Wav;
+        return sound.Wav;
     }
     @compileLog(format);
 

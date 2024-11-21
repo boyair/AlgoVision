@@ -1,15 +1,41 @@
 const std = @import("std");
 const SDL = @import("SDL");
+const SDLex = @import("SDLex.zig");
+const sound = @import("sound.zig");
 const operation = @import("operation.zig");
 const animation = @import("animation.zig");
 const design = @import("design.zig");
 const app = @import("app.zig");
 const heap = @import("heap/internal.zig");
 const stack = @import("stack/internal.zig");
+const mixer = @cImport(@cInclude("SDL2/SDL_mixer.h"));
 const Pointer = @import("pointer.zig");
+var action_sounds: [std.meta.fields(actions).len]?sound.Wav = undefined;
+const action_sound_paths: [std.meta.fields(actions).len][]const u8 = .{
+    "/set_value_heap.wav",
+    "/allocate.wav",
+    "/free.wav",
+    "/make_pointer.wav",
+    "/remove_pointer.wav",
+    "",
+    "/call.wav",
+    "/eval_function.wav",
+    "",
+    "/stack_pop.wav",
+    "",
+    "",
+};
+pub fn init() !void {
+    inline for (0.., action_sound_paths) |idx, path| {
+        action_sounds[idx] = if (path.len > 0) try SDLex.loadResource(app.exe_path, path, null) else null;
+    }
+}
 
+pub fn getSound(action: actions) ?sound.Wav {
+    return action_sounds[@intFromEnum(action)];
+}
 pub const actions = enum(u8) {
-    set_value_heap,
+    set_value_heap = 0,
     allocate,
     free,
     make_pointer,

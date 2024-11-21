@@ -158,12 +158,10 @@ pub fn drawPointer(pointer: *Pointer, view: View, renderer: SDL.Renderer) void {
         view.drawLine(line, SDL.Color.red, renderer);
         return;
     }
-    std.debug.print("distance: {d}\n", .{distance});
     const arrow_length = 100;
     const reduced_distance = distance - arrow_length;
     const intersectionX = line.start.x + diff.x * reduced_distance / distance;
     const intersectionY = line.start.y + diff.y * reduced_distance / distance;
-    std.debug.print("x: {d} ,y: {d} - angle: {d}\n", .{ diff.x, diff.y, diff.getAngle() });
     view.drawLine(.{ .start = line.start, .end = .{ .x = intersectionX, .y = intersectionY } }, SDL.Color.red, renderer);
     view.drawEx(.{ .x = intersectionX, .y = intersectionY - 25, .width = 100, .height = 50 }, Design.pointer.arrow, renderer, diff.getAngle() * 180 / std.math.pi, .{ .x = 0, .y = 0.5 }, .none);
 }

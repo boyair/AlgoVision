@@ -6,8 +6,8 @@ const Operation = @import("../operation.zig");
 const Vec2 = @import("../Vec2.zig").Vec2;
 const SDLex = @import("../SDLex.zig");
 const design = @import("../design.zig").heap;
-pub const rows = 2;
-pub const columns = 2;
+pub const rows = 100;
+pub const columns = 100;
 const Ownership = enum(u8) {
     free, //block is available for allocation.
     taken, //block is used by another program.
@@ -404,7 +404,7 @@ pub fn findRandFreeRange(size: usize) HeapError!struct { start: usize, end: usiz
     const search_start = @mod(@abs(random.int(i64)), mem_runtime.len - size);
     start_idx = search_start;
     var iter_count: usize = 0;
-    main: while (iter_count > mem_runtime.len) : ({
+    main: while (iter_count < mem_runtime.len) : ({
         start_idx %= mem_runtime.len;
     }) {
         if (mem_runtime[start_idx].owner != .free) {

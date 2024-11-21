@@ -95,6 +95,11 @@ pub const Manager = struct {
                     }
                 },
                 .act => {
+                    var maybe_sound = Action.getSound(std.meta.activeTag(current_operation.data.action));
+                    if (maybe_sound) |*sound| {
+                        sound.play(90, 0) catch unreachable;
+                    }
+
                     //create undo node
                     const undo_node = app.Allocator.allocator().create(std.DoublyLinkedList(Action.Action).Node) catch unreachable;
                     undo_node.* = .{
