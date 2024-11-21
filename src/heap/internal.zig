@@ -58,8 +58,8 @@ const batch_size: SDL.Size = .{ .width = std.math.sqrt(columns), .height = std.m
 const batch_pixel_size: SDL.Size = .{ .width = batch_size.width * design.block.full_size.width, .height = batch_size.height * design.block.full_size.height };
 pub var batch_tex: [rows / batch_size.height + 1][columns / batch_size.width + 1]SDL.Texture = undefined; // textures of the numbers batched for performance
 
-pub fn init(renderer: SDL.Renderer, allocator: std.mem.Allocator) void {
-    design.font = SDLex.loadResource(app.exe_path, "/ioveska.ttf", app.renderer) catch {
+pub fn init(exe_path: []const u8, comptime font_path: []const u8, renderer: SDL.Renderer, allocator: std.mem.Allocator) void {
+    design.font = SDLex.loadResource(exe_path, font_path, app.renderer) catch {
         @panic("failed to load font!");
     };
     initRand();

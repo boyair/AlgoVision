@@ -12,16 +12,16 @@ const mixer = @cImport(@cInclude("SDL2/SDL_mixer.h"));
 const Pointer = @import("pointer.zig");
 var action_sounds: [std.meta.fields(actions).len]?sound.Wav = undefined;
 const action_sound_paths: [std.meta.fields(actions).len][]const u8 = .{
-    "/set_value_heap.wav",
-    "/allocate.wav",
-    "/free.wav",
-    "/make_pointer.wav",
-    "/remove_pointer.wav",
+    "/sounds/set_value_heap.wav",
+    "/sounds/allocate.wav",
+    "/sounds/free.wav",
+    "/sounds/make_pointer.wav",
+    "/sounds/remove_pointer.wav",
     "",
-    "/call.wav",
-    "/eval_function.wav",
+    "/sounds/call.wav",
+    "/sounds/eval_function.wav",
     "",
-    "/stack_pop.wav",
+    "/sounds/stack_pop.wav",
     "",
     "",
 };

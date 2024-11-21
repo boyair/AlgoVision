@@ -10,10 +10,10 @@ pub var stack: std.DoublyLinkedList(MethodData) = undefined;
 pub var top_eval: ?i64 = null;
 var textureGarbage: std.ArrayList(SDL.Texture) = undefined;
 
-pub fn init() !void {
+pub fn init(exe_path: []const u8, comptime font_path: []const u8) !void {
     stack = std.DoublyLinkedList(MethodData){};
-    design.font = try SDLex.loadResource(app.exe_path, "/ioveska.ttf", app.renderer);
-    design.method.bg = try SDLex.loadResource(app.exe_path, "/textures/method.png", app.renderer);
+    design.font = try SDLex.loadResource(exe_path, font_path, app.renderer);
+    design.method.bg = try SDLex.loadResource(exe_path, "/textures/method.png", app.renderer);
     textureGarbage = try std.ArrayList(SDL.Texture).initCapacity(app.Allocator.allocator(), 3);
 
     design.frame.texture = try SDLex.loadResource(app.exe_path, "/textures/ram.png", app.renderer);

@@ -69,7 +69,7 @@ pub fn init() !void {
     exe_path = try std.fs.selfExeDirPathAlloc(gpa.allocator());
 
     //init UI
-    try UI.init(exe_path, "/3270.ttf", renderer);
+    try UI.init(exe_path, "/fonts/3270.ttf", renderer);
 
     //loading screen
     loading_screen_texture = SDLex.textureFromText("Loading...", Design.UI.font, SDL.Color.rgb(150, 150, 150), renderer);
@@ -77,10 +77,10 @@ pub fn init() !void {
     renderer.present();
 
     //init heap
-    heap_internal.init(renderer, Allocator.allocator());
+    heap_internal.init(exe_path, "/fonts/ioveska.ttf", renderer, Allocator.allocator());
 
     //init stack
-    try stack_internal.init();
+    try stack_internal.init(exe_path, "/fonts/ioveska.ttf");
 
     //init pointer
     try Pointer.init(exe_path, renderer);
