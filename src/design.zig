@@ -81,3 +81,22 @@ pub const stack = struct {
         pub const size: SDL.Size = .{ .width = 850, .height = 425 };
     };
 };
+pub const action = struct {
+    const sound = @import("sound.zig");
+    const action_count = @import("std").meta.fields(@import("action.zig").actions).len;
+    pub var action_sounds: [action_count]?sound.Wav = undefined;
+    pub const action_sound_paths: [action_count][]const u8 = .{
+        "/sounds/set_value_heap.wav",
+        "/sounds/allocate.wav",
+        "/sounds/free.wav",
+        "/sounds/make_pointer.wav",
+        "/sounds/remove_pointer.wav",
+        "",
+        "/sounds/call.wav",
+        "/sounds/eval_function.wav",
+        "",
+        "/sounds/stack_pop.wav",
+        "",
+        "",
+    };
+};
