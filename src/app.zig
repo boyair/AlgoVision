@@ -12,6 +12,7 @@ const Operation = @import("operation.zig");
 const Animation = @import("animation.zig");
 const Pointer = @import("pointer.zig");
 const UI = @import("UI.zig");
+const builtin = @import("builtin");
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 //arena allocator for all the internal allocation of the application
 pub var Allocator = std.heap.ArenaAllocator.init(gpa.allocator());
@@ -38,6 +39,7 @@ var loading_screen_texture: SDL.Texture = undefined;
 var playback_speed: f128 = 1.0;
 pub var freecam = false;
 var current_action: Operation.Action.actions = .call;
+pub const single_threaded = builtin.os.tag == .windows; //multithreaded crash on windows
 
 //---------------------------------------------------
 //---------------------------------------------------
@@ -54,7 +56,14 @@ pub fn init() !void {
     try SDLex.fullyInitSDL();
     const display_info = SDL.DisplayMode.getDesktopInfo(0) catch unreachable;
 
-    window = try SDL.createWindow("Application", .{ .centered = {} }, .{ .centered = {} }, @intCast(display_info.w), @intCast(display_info.h), .{ .vis = .shown, .resizable = false, .borderless = true, .mouse_capture = true });
+    window = try SDL.createWindow(
+        "Application",
+        .{ .centered = {} },
+        .{ .centered = {} },
+        @intCast(display_info.w),
+        @intCast(display_info.h),
+        .{ .vis = .shown, .resizable = false, .borderless = true, .mouse_capture = false },
+    );
     renderer = try SDL.createRenderer(window, null, .{ .accelerated = true });
     try renderer.setColor(Design.BG_color);
     cam_view = View.init(.{
@@ -107,12 +116,20 @@ fn deinit() void {
 //----------------------RUNNING----------------------
 //---------------------------------------------------
 //---------------------------------------------------
+fn fullUpdate(last_iteration_time: i128) void {
+    tickUpdate(last_iteration_time);
+    renderFrame(last_iteration_time);
+}
 
 pub fn start() !void {
     defer deinit();
-    const logic_thread = try std.Thread.spawn(.{}, runLogic, .{});
-    defer logic_thread.join();
-    repeatTimed(renderFrame, frame_time_nano);
+    if (single_threaded) {
+        repeatTimed(fullUpdate, Design.frame_time);
+    } else {
+        const logic_thread = try std.Thread.spawn(.{}, runLogic, .{});
+        defer logic_thread.join();
+        repeatTimed(renderFrame, frame_time_nano);
+    }
 }
 
 const element_params = .{

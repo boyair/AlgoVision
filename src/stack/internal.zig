@@ -37,7 +37,11 @@ var TextureUpdateMut = struct {
 //function to handle signaling the main thread to update
 //the texture of the top mathod.
 var texture_made_counter: u64 = 0;
-fn sendTextureUpdateSignal() void {
+fn sendTextureUpdateSignal(comptime single_threaded: bool) void {
+    if (single_threaded) {
+        UpdateTopTexture();
+        return;
+    }
     TextureUpdateMut.needs_update = true;
     while (TextureUpdateMut.needs_update) {
         TextureUpdateMut.condition.wait(&TextureUpdateMut.mutex);
@@ -53,15 +57,16 @@ pub fn clearGarbageTextures() void {
 pub fn reciveTextureUpdateSignal() void {
     TextureUpdateMut.mutex.lock();
     defer TextureUpdateMut.mutex.unlock();
-    if (TextureUpdateMut.needs_update)
+    if (TextureUpdateMut.needs_update) {
         UpdateTopTexture();
+        TextureUpdateMut.needs_update = false;
+        TextureUpdateMut.condition.signal();
+    }
 }
 
 fn UpdateTopTexture() void {
     if (stack.last) |top_method| {
         top_method.data.makeTexture(app.renderer) catch unreachable;
-        TextureUpdateMut.needs_update = false;
-        TextureUpdateMut.condition.signal();
     }
 }
 
@@ -154,7 +159,7 @@ pub fn push(allocator: std.mem.Allocator, method: MethodData) void {
     const node = allocator.create(std.DoublyLinkedList(MethodData).Node) catch unreachable;
     node.data = method;
     stack.append(node);
-    sendTextureUpdateSignal();
+    sendTextureUpdateSignal(app.single_threaded);
 }
 pub fn pop(allocator: std.mem.Allocator) void {
     TextureUpdateMut.mutex.lock();
@@ -191,7 +196,7 @@ pub fn evalTop(value: i64) void {
     defer TextureUpdateMut.mutex.unlock();
     if (stack.last) |_| {
         top_eval = value;
-        sendTextureUpdateSignal();
+        sendTextureUpdateSignal(app.single_threaded);
     }
 }
 
@@ -201,6 +206,6 @@ pub fn forgetEval() void {
     if (stack.last) |top| {
         _ = top;
         top_eval = null;
-        sendTextureUpdateSignal();
+        sendTextureUpdateSignal(app.single_threaded);
     }
 }
