@@ -16,10 +16,14 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const sdk = Sdk.init(b, null, null);
-
+    // const
     const asset_path = b.path("assets/");
     b.installDirectory(.{ .source_dir = asset_path, .install_dir = .{ .bin = {} }, .install_subdir = "./" });
 
+    //  const mixer_path = "windows/bin/SDL2_mixer.dll";
+    //  b.installFile(mixer_path, "zig-out/bin/SDL2_mixer.dll");
+    //  const image_path = "windows/bin/SDL2_image.dll";
+    //  b.installFile(image_path, "zig-out/bin/SDL2_image.dll");
     const exe = b.addExecutable(.{
         .name = "visualiser",
         .root_source_file = b.path("src/main.zig"),
@@ -33,13 +37,19 @@ pub fn build(b: *std.Build) void {
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
     // step when running `zig build`).
-    if (target.result.isMinGW()) {
+    //const mixer_path = b.path("windows/bin/SDL2_mixer.dll");
+    if (target.result.os.tag == .windows) {
+        b.installBinFile("windows/bin/SDL2_mixer.dll", "./SDL2_mixer.dll");
+        b.installBinFile("windows/bin/SDL2_image.dll", "./SDL2_image.dll");
+        exe.subsystem = .Windows;
         sdk.link(exe, .dynamic, .SDL2); // link SDL2 as a static library
         sdk.link(exe, .dynamic, .SDL2_ttf); // link SDL2_ttf as a static library
         exe.linkSystemLibrary("mingw32");
         exe.linkSystemLibrary("SDL2main");
         exe.linkSystemLibrary("SDL2");
         exe.linkSystemLibrary("SDL2_ttf");
+        exe.linkSystemLibrary("SDL2_mixer");
+        exe.linkSystemLibrary("SDL2_image");
         exe.linkSystemLibrary("user32");
         exe.linkSystemLibrary("gdi32");
         exe.linkSystemLibrary("winmm");
