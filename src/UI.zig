@@ -5,7 +5,17 @@ const App = @import("app.zig");
 const Action = @import("action.zig");
 const Design = @import("design.zig").UI;
 var owner_renderer: SDL.Renderer = undefined;
-pub var elements = .{ &speed_element, &action_element, &freecam_element, &freecam_checkbox, &exit_button, &action_back, &action_forward };
+pub var elements = .{
+    &speed_element,
+    &action_element,
+    &freecam_element,
+    &freecam_checkbox,
+    &pointers_element,
+    &pointers_checkbox,
+    &exit_button,
+    &action_back,
+    &action_forward,
+};
 
 //---------------------------------------------------
 //---------------------------------------------------
@@ -225,6 +235,19 @@ pub fn freecamToggle(event: *const SDL.Event, data: *bool) void {
     }
 }
 
+pub var pointers_element = textElement(void, printPointers, null, Design.pointers.color).init({}, Design.pointers.rect).element;
+fn printPointers(buf: []u8, on: void) [:0]const u8 {
+    _ = buf;
+    _ = on;
+    return "Pointers";
+}
+
+pub var pointers_checkbox = checkbox{ .texture = null, .cache = false, .rect = &Design.CBpointers };
+pub fn pointersToggle(event: *const SDL.Event, data: *bool) void {
+    if (event.* == .mouse_button_up and event.mouse_button_up.button == .left) {
+        data.* = !data.*;
+    }
+}
 //---------------------------------------------------
 //---------------------------------------------------
 //-------------------GENERAL UI----------------------

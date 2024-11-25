@@ -38,6 +38,7 @@ const tick_time = 1_000_000_000 / tick_rate; // time for logic update in ns
 var loading_screen_texture: SDL.Texture = undefined;
 var playback_speed: f128 = 1.0;
 pub var freecam = false;
+pub var pointers_visible = true;
 var current_action: Operation.Action.actions = .call;
 pub const single_threaded = builtin.os.tag == .windows; //multithreaded crash on windows
 
@@ -137,6 +138,8 @@ const element_params = .{
     &current_action,
     &UI.VOID,
     &freecam,
+    &UI.VOID,
+    &pointers_visible,
     &running,
     &UI.FALSE,
     &UI.TRUE,
@@ -148,7 +151,8 @@ fn renderFrame(iteration_time: i128) void {
     renderer.clear() catch unreachable;
     heap_internal.draw(renderer, cam_view);
     stack_internal.draw(renderer, cam_view);
-    Pointer.draw(cam_view, renderer);
+    if (pointers_visible)
+        Pointer.draw(cam_view, renderer);
     UI.drawBG() catch unreachable;
     inline for (UI.elements, element_params) |element, param| {
         element.draw(param.*);
