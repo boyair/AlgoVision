@@ -40,7 +40,8 @@ var loading_screen_texture: SDL.Texture = undefined;
 var playback_speed: f128 = 1.0;
 pub var freecam = false;
 pub var pointers_visible = true;
-var current_action: Operation.Action.actions = .call;
+var current_action: Operation.Action.actions = .none;
+pub var runtime_error: ?rt_error.errors = null;
 pub const single_threaded = builtin.os.tag == .windows; //multithreaded crash on windows
 
 //---------------------------------------------------
@@ -144,7 +145,7 @@ const element_params = .{
     &running,
     &UI.FALSE,
     &UI.TRUE,
-    &operation_manager.current_error,
+    &runtime_error,
 };
 fn renderFrame(iteration_time: i128) void {
     _ = iteration_time;
@@ -165,6 +166,7 @@ fn renderFrame(iteration_time: i128) void {
 fn tickUpdate(last_iteration_time: i128) void {
     if (playback_speed > 0)
         operation_manager.update(@intFromFloat(@as(f128, @floatFromInt(last_iteration_time)) * playback_speed), !freecam);
+    std.debug.print("{s}\n", .{if (runtime_error == null) "no error" else "error"});
     if (operation_manager.current_operation) |operation| {
         current_action = operation.data.action;
     }

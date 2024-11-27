@@ -34,7 +34,6 @@ pub const Manager = struct {
     animation_state: Animation.ZoomAnimation, // a copy of current animation to not affect the animation directly.
     time_paused: i128,
     state: OperationState,
-    current_error: ?rt_err.errors = null,
     blocked_by_error: bool = false,
     const This = @This();
 
@@ -107,8 +106,6 @@ pub const Manager = struct {
                     if (maybe_sound) |*sound| {
                         sound.play(90, 0) catch unreachable;
                     }
-                    if (current_operation.data.action == .runtime_error)
-                        self.current_error = current_operation.data.action.runtime_error;
 
                     //create undo node
                     const undo_node = app.Allocator.allocator().create(std.DoublyLinkedList(Action.Action).Node) catch unreachable;
@@ -139,11 +136,11 @@ pub const Manager = struct {
     }
 
     pub fn undoLast(self: *This) void {
-        const current_performed = @intFromEnum(self.state) > @intFromEnum(OperationState.act);
+        const was_current_performed = @intFromEnum(self.state) > @intFromEnum(OperationState.act);
         //find last operation (if not found return)
         const last_performed = blk: {
             if (self.current_operation) |op| {
-                if (current_performed) {
+                if (was_current_performed) {
                     break :blk self.current_operation;
                 }
                 if (op.prev) |prev| {
@@ -152,8 +149,6 @@ pub const Manager = struct {
             }
             return;
         };
-        if (self.undo_queue.last.?.data == .runtime_error)
-            self.current_error = null;
         //call last undo and pop it
         _ = Action.perform(self.undo_queue.pop().?.data);
         //move current_operation pointer one operation back

@@ -126,7 +126,8 @@ pub fn perform(action: Action) Action {
             stack.evalTop(data.eval);
             return Action{ .stack_pop = {} };
         },
-        .runtime_error => |_| {
+        .runtime_error => |err| {
+            app.runtime_error = err;
             return Action{ .runtime_error = null };
         },
         else => {

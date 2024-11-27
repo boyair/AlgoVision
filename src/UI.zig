@@ -58,7 +58,7 @@ fn uiElement(value_type: type, makeTexture: fn (value: value_type) SDL.Texture, 
                 const non_equal_values: bool = blk: {
                     if (self.cache) |real_cache| {
                         if (value) |real_val| {
-                            break :blk std.mem.eql(u8, std.mem.asBytes(&real_val), std.mem.asBytes(&real_cache));
+                            break :blk !std.mem.eql(u8, std.mem.asBytes(&real_val), std.mem.asBytes(&real_cache));
                         } else {
                             break :blk true;
                         }
