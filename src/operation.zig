@@ -1,5 +1,6 @@
 const std = @import("std");
 const SDL = @import("SDL");
+const rt_err = @import("runtime_error.zig");
 const SDLex = @import("SDLex.zig");
 const design = @import("design.zig");
 pub const Action = @import("action.zig");
@@ -33,6 +34,8 @@ pub const Manager = struct {
     animation_state: Animation.ZoomAnimation, // a copy of current animation to not affect the animation directly.
     time_paused: i128,
     state: OperationState,
+    current_error: ?rt_err.errors = null,
+    blocked_by_error: bool = false,
     const This = @This();
 
     pub fn init() This {
@@ -55,6 +58,8 @@ pub const Manager = struct {
     }
 
     pub fn push(self: *This, allocator: std.mem.Allocator, operation: Operation) void {
+        if (self.blocked_by_error) // first error is always the last operation.
+            return;
         const node = allocator.create(std.DoublyLinkedList(Operation).Node) catch {
             @panic("could not allocate memory for operation.");
         };
@@ -68,6 +73,9 @@ pub const Manager = struct {
         if (self.operation_queue.len == 1) {
             self.current_operation = self.operation_queue.first;
             self.animation_state = self.current_operation.?.data.animation;
+        }
+        if (node.data.action == .runtime_error) {
+            self.blocked_by_error = true;
         }
     }
     pub fn insertNext(self: *This, allocator: std.mem.Allocator, operation: Operation) void {
@@ -99,6 +107,8 @@ pub const Manager = struct {
                     if (maybe_sound) |*sound| {
                         sound.play(90, 0) catch unreachable;
                     }
+                    if (current_operation.data.action == .runtime_error)
+                        self.current_error = current_operation.data.action.runtime_error;
 
                     //create undo node
                     const undo_node = app.Allocator.allocator().create(std.DoublyLinkedList(Action.Action).Node) catch unreachable;
@@ -142,6 +152,8 @@ pub const Manager = struct {
             }
             return;
         };
+        if (self.undo_queue.last.?.data == .runtime_error)
+            self.current_error = null;
         //call last undo and pop it
         _ = Action.perform(self.undo_queue.pop().?.data);
         //move current_operation pointer one operation back

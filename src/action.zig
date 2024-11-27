@@ -1,6 +1,7 @@
 const std = @import("std");
 const SDL = @import("SDL");
 const SDLex = @import("SDLex.zig");
+const rt_err = @import("runtime_error.zig");
 const Design = @import("design.zig").action;
 const sound = @import("sound.zig");
 const operation = @import("operation.zig");
@@ -32,6 +33,7 @@ pub const actions = enum(u8) {
     forget_eval,
     stack_pop,
     stack_unpop,
+    runtime_error,
     none,
 };
 pub const Action = union(actions) {
@@ -46,6 +48,7 @@ pub const Action = union(actions) {
     forget_eval: void,
     stack_pop: void,
     stack_unpop: struct { eval: i64, method: stack.MethodData }, // undoing the pop action requires both pushing it back and evaluate
+    runtime_error: ?rt_err.errors, // string with the error message
     none: void,
 };
 
@@ -122,6 +125,9 @@ pub fn perform(action: Action) Action {
             stack.push(app.Allocator.allocator(), data.method);
             stack.evalTop(data.eval);
             return Action{ .stack_pop = {} };
+        },
+        .runtime_error => |_| {
+            return Action{ .runtime_error = null };
         },
         else => {
             return Action.none;

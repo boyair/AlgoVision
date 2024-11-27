@@ -4,6 +4,7 @@ const SDL = @import("SDL");
 const SDLex = @import("SDLex.zig");
 const View = @import("view.zig").View;
 pub const heap = @import("heap/interface.zig");
+const rt_error = @import("runtime_error.zig");
 const heap_internal = @import("heap/internal.zig");
 pub const stack = @import("stack/interface.zig");
 pub const stack_internal = @import("stack/internal.zig");
@@ -143,6 +144,7 @@ const element_params = .{
     &running,
     &UI.FALSE,
     &UI.TRUE,
+    &operation_manager.current_error,
 };
 fn renderFrame(iteration_time: i128) void {
     _ = iteration_time;

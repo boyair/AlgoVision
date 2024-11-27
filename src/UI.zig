@@ -1,6 +1,7 @@
 const SDL = @import("SDL");
 const SDLex = @import("SDLex.zig");
 const std = @import("std");
+const rt_err = @import("runtime_error.zig");
 const App = @import("app.zig");
 const Action = @import("action.zig");
 const Design = @import("design.zig").UI;
@@ -15,6 +16,7 @@ pub var elements = .{
     &exit_button,
     &action_back,
     &action_forward,
+    &runtime_error,
 };
 
 //---------------------------------------------------
@@ -48,15 +50,32 @@ fn uiElement(value_type: type, makeTexture: fn (value: value_type) SDL.Texture, 
     return struct {
         texture: ?SDL.Texture,
         cache: value_type,
-        rect: *const SDL.Rectangle,
+        rect: SDL.Rectangle,
 
         const Self = @This();
         pub fn draw(self: *Self, value: value_type) void {
-            if (value != self.cache or self.texture == null) {
+            if (@typeInfo(value_type) == .Optional) {
+                const non_equal_values: bool = blk: {
+                    if (self.cache) |real_cache| {
+                        if (value) |real_val| {
+                            break :blk std.mem.eql(u8, std.mem.asBytes(&real_val), std.mem.asBytes(&real_cache));
+                        } else {
+                            break :blk true;
+                        }
+                    } else if (value) |_| {
+                        break :blk true;
+                    }
+                    break :blk false; // both null means equal.
+                };
+                if (non_equal_values or self.texture == null) {
+                    self.updateTexture(value) catch unreachable;
+                    self.cache = value;
+                }
+            } else if (value != self.cache or self.texture == null) {
                 self.updateTexture(value) catch unreachable;
                 self.cache = value;
             }
-            Design.view.draw(SDLex.convertSDLRect(self.rect.*), self.texture.?, owner_renderer);
+            Design.view.draw(SDLex.convertSDLRect(self.rect), self.texture.?, owner_renderer);
         }
         pub inline fn handleEvent(self: *Self, event: *const SDL.Event, mouse_pos: SDL.Point, value: *value_type) void {
             if (eventHandle) |handle| {
@@ -72,7 +91,7 @@ fn uiElement(value_type: type, makeTexture: fn (value: value_type) SDL.Texture, 
             self.texture = makeTexture(value);
         }
         pub fn isHovered(self: *const Self, mouse_pos: SDL.Point) bool {
-            const converted = Design.view.convert(SDLex.convertSDLRect(self.rect.*)) catch unreachable;
+            const converted = Design.view.convert(SDLex.convertSDLRect(self.rect)) catch unreachable;
             return SDLex.pointInRect(mouse_pos, SDLex.convertSDLRect(converted));
         }
     };
@@ -82,10 +101,10 @@ pub fn textElement(comptime value_type: type, print: fn (buf: []u8, val: value_t
         element: uiElement(value_type, makeTexture, eventHandle),
 
         pub fn init(value: value_type, rect: SDL.Rectangle) @This() {
-            return .{ .element = .{ .texture = null, .cache = value, .rect = &rect } };
+            return .{ .element = .{ .texture = null, .cache = value, .rect = rect } };
         }
         fn makeTexture(value: value_type) SDL.Texture {
-            var text_buffer: [40]u8 = undefined;
+            var text_buffer: [60]u8 = undefined;
             const num_str = print(&text_buffer, value);
 
             const surf = Design.font.renderTextBlended(num_str, color) catch handle: {
@@ -131,7 +150,7 @@ pub var VOID = {};
 //---------------------------------------------------
 //---------------------------------------------------
 
-pub var exit_button = uiElement(bool, exitButtonTexture, stopRunning){ .texture = null, .cache = false, .rect = &Design.exit_button };
+pub var exit_button = uiElement(bool, exitButtonTexture, stopRunning){ .texture = null, .cache = false, .rect = Design.exit_button };
 fn stopRunning(event: *const SDL.Event, running: *bool) void {
     if (event.* == .mouse_button_up and event.mouse_button_up.button == .left) {
         running.* = false;
@@ -199,6 +218,7 @@ fn actionNames(action: Action.actions) []const u8 {
         .forget_eval => "Forget",
         .stack_pop => "Pop",
         .stack_unpop => "Push",
+        .runtime_error => "error",
         .none => "None",
     };
 }
@@ -228,7 +248,7 @@ fn printFreeCam(buf: []u8, on: void) [:0]const u8 {
     return "freecam";
 }
 
-pub var freecam_checkbox = checkbox{ .texture = null, .cache = false, .rect = &Design.CBfreecam };
+pub var freecam_checkbox = checkbox{ .texture = null, .cache = false, .rect = Design.CBfreecam };
 pub fn freecamToggle(event: *const SDL.Event, data: *bool) void {
     if (event.* == .mouse_button_up and event.mouse_button_up.button == .left) {
         data.* = !data.*;
@@ -242,11 +262,19 @@ fn printPointers(buf: []u8, on: void) [:0]const u8 {
     return "Pointers";
 }
 
-pub var pointers_checkbox = checkbox{ .texture = null, .cache = false, .rect = &Design.CBpointers };
+pub var pointers_checkbox = checkbox{ .texture = null, .cache = false, .rect = Design.CBpointers };
 pub fn pointersToggle(event: *const SDL.Event, data: *bool) void {
     if (event.* == .mouse_button_up and event.mouse_button_up.button == .left) {
         data.* = !data.*;
     }
+}
+
+pub var runtime_error = textElement(?rt_err.errors, printError, null, Design.rt_err.color).init(null, Design.rt_err.rect).element;
+fn printError(buf: []u8, err: ?rt_err.errors) [:0]const u8 {
+    var allocator = std.heap.FixedBufferAllocator.init(buf);
+    const text = if (err) |real_err| rt_err.error_message(real_err, allocator.allocator()) else "";
+    runtime_error.rect.width = @intCast(@min(@as(usize, @intCast(App.cam_view.port.width)), text.len * 10));
+    return text;
 }
 //---------------------------------------------------
 //---------------------------------------------------

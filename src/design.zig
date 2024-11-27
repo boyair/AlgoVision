@@ -62,13 +62,17 @@ pub const UI = struct {
         .rect = .{ .x = 100, .y = 200, .width = 200, .height = 65 },
         .color = SDL.Color.white,
     };
-    pub var CBfreecam = SDL.Rectangle{ .x = 25, .y = 210, .width = 45, .height = 45 };
+    pub const CBfreecam = SDL.Rectangle{ .x = 25, .y = 210, .width = 45, .height = 45 };
     pub const pointers = element{
         .rect = .{ .x = 100, .y = 300, .width = 220, .height = 65 },
         .color = SDL.Color.white,
     };
-    pub var CBpointers = SDL.Rectangle{ .x = 25, .y = 310, .width = 45, .height = 45 };
-    pub var exit_button = SDL.Rectangle{ .x = 400, .y = 0, .width = 45, .height = 45 };
+    pub const rt_err = element{
+        .rect = .{ .x = 0, .y = 800, .width = 220, .height = 65 },
+        .color = SDL.Color.red,
+    };
+    pub const CBpointers = SDL.Rectangle{ .x = 25, .y = 310, .width = 45, .height = 45 };
+    pub const exit_button = SDL.Rectangle{ .x = 400, .y = 0, .width = 45, .height = 45 };
 };
 
 pub const stack = struct {
@@ -101,6 +105,7 @@ pub const action = struct {
         "/sounds/eval_function.wav",
         "",
         "/sounds/stack_pop.wav",
+        "",
         "",
         "",
     };

@@ -66,9 +66,7 @@ pub fn main() !void {
     _ = app.stack.call(fib, 4);
     list.pushBack(69, gpa.allocator());
     list.next.?.pushBack(420, gpa.allocator());
+    list.mem[1] += 2;
     list.removeNext(gpa.allocator());
     try app.start();
 }
-
-//TODO:
-//make pointer(^) arrows toggleable with a checkbox

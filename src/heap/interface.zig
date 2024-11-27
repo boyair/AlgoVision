@@ -4,6 +4,7 @@ const app = @import("../app.zig");
 const SDL = @import("SDL");
 const Internals = @import("internal.zig");
 const View = @import("../view.zig").View;
+const rt_err = @import("../runtime_error.zig");
 const Operation = @import("../operation.zig");
 const SDLex = @import("../SDLex.zig");
 const design = @import("../design.zig").heap;
@@ -42,6 +43,11 @@ fn twoblockView(idx1: usize, idx2: usize) SDL.RectangleF {
     result.width += design.block.full_size.width * 8;
     result.height += design.block.full_size.height * 8;
     return result;
+}
+fn pushError(err: rt_err.errors) void {
+    const non_animation = ZoomAnimation.init(&app.cam_view, null, blockView(0), 0);
+    const operation: Operation.Operation = .{ .animation = non_animation, .action = .{ .runtime_error = err }, .pause_time_nano = 0 };
+    app.operation_manager.push(app.Allocator.allocator(), operation);
 }
 
 //calculates camera rect to view a range on the heap
@@ -82,7 +88,13 @@ fn rangeView(start: usize, end: usize) SDL.RectangleF {
 }
 
 pub fn setPointer(source: usize, destination: usize) void {
-    if (Internals.mem_runtime[source].owner != .pointer and Internals.mem_runtime[source].owner != .user) @panic("tried to access non allocated memory ");
+    if (app.operation_manager.blocked_by_error) return; // all operations after error are canceled.
+    if (Internals.mem_runtime[source].owner != .pointer and Internals.mem_runtime[source].owner != .user) {
+        const non_animation = ZoomAnimation.init(&app.cam_view, null, blockView(source), 0);
+        const operation: Operation.Operation = .{ .animation = non_animation, .action = .{ .runtime_error = .{ .memory_not_allocated = source } }, .pause_time_nano = 0 };
+        app.operation_manager.push(app.Allocator.allocator(), operation);
+        return;
+    }
     if (Internals.mem_runtime[source].owner == .pointer) {
         const non_animation = ZoomAnimation.init(&app.cam_view, null, blockView(source), 0);
         const operation: Operation.Operation = .{ .animation = non_animation, .action = .{ .remove_pointer = .{ .source = .{ .heap = source }, .destination = null } }, .pause_time_nano = 0 };
@@ -98,6 +110,7 @@ pub fn setPointer(source: usize, destination: usize) void {
 }
 
 pub fn set(idx: usize, value: i64) void {
+    if (app.operation_manager.blocked_by_error) return; // all operations after error are canceled.
     const animation = ZoomAnimation.init(&app.cam_view, null, blockView(idx), 400_000_000);
 
     const operation: Operation.Operation = .{ .animation = animation, .action = .{ .set_value_heap = .{ .idx = idx, .value = value } }, .pause_time_nano = 300_000_000 };
@@ -107,6 +120,7 @@ pub fn set(idx: usize, value: i64) void {
 }
 
 pub fn get(idx: usize) i64 {
+    if (app.operation_manager.blocked_by_error) return; // all operations after error are canceled.
     return Internals.get(idx) catch |err| switch (err) {
         error.MemoryNotAllocated => {
             @panic("trying to get non allocated memory");
@@ -122,8 +136,14 @@ pub fn get(idx: usize) i64 {
 
 //return array (slice) of indices of allocated memory.
 pub fn allocate(allocator: std.mem.Allocator, size: usize) []usize {
+    const dummy = allocator.alloc(usize, size) catch unreachable;
+    for (dummy) |*val| {
+        val.* = std.math.maxInt(usize);
+    }
+    if (app.operation_manager.blocked_by_error) return dummy; // all operations after error are canceled.
     const range = Internals.findRandFreeRange(size) catch {
-        @panic("could not find large enough buffer");
+        pushError(.{ .no_available_memrory = size });
+        return dummy;
     };
     var indices = std.ArrayList(usize).init(allocator);
     for (range.start..range.end) |idx| {
@@ -151,7 +171,9 @@ pub fn free(allocator: std.mem.Allocator, indices: []usize) void {
 
             const operation: Operation.Operation = .{ .animation = animation, .action = .{ .free = idx }, .pause_time_nano = 300_000_000 };
             app.operation_manager.push(app.Allocator.allocator(), operation);
-        } else @panic("failed to free memory: not allocated");
+        } else {
+            pushError(.{ .memory_not_allocated = idx });
+        }
     }
     allocator.free(indices);
 }
