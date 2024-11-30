@@ -166,7 +166,6 @@ fn renderFrame(iteration_time: i128) void {
 fn tickUpdate(last_iteration_time: i128) void {
     if (playback_speed > 0)
         operation_manager.update(@intFromFloat(@as(f128, @floatFromInt(last_iteration_time)) * playback_speed), !freecam);
-    std.debug.print("{s}\n", .{if (runtime_error == null) "no error" else "error"});
     if (operation_manager.current_operation) |operation| {
         current_action = operation.data.action;
     }

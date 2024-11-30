@@ -106,14 +106,7 @@ pub fn textElement(comptime value_type: type, print: fn (buf: []u8, val: value_t
         fn makeTexture(value: value_type) SDL.Texture {
             var text_buffer: [60]u8 = undefined;
             const num_str = print(&text_buffer, value);
-
-            const surf = Design.font.renderTextBlended(num_str, color) catch handle: {
-                std.debug.print("failed to load surface for texture\npossible used bad font.\n", .{});
-                break :handle SDL.createRgbSurfaceWithFormat(32, 32, SDL.PixelFormatEnum.rgba8888) catch unreachable;
-            };
-            const texture = SDL.createTextureFromSurface(owner_renderer, surf) catch unreachable;
-            texture.setBlendMode(.blend) catch unreachable;
-            surf.destroy();
+            const texture = SDLex.textureFromText(num_str, Design.font, color, owner_renderer);
             return texture;
         }
     };

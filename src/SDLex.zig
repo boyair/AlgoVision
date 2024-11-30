@@ -91,7 +91,11 @@ pub fn alignedRect(rect: anytype, alignment: Vec2, size: anytype) @TypeOf(rect) 
 
 pub inline fn textureFromText(text: [:0]const u8, font: SDL.ttf.Font, color: SDL.Color, renderer: SDL.Renderer) SDL.Texture {
     const surf = font.renderTextBlended(text, color) catch {
-        @panic("failed to load surface from font\nmight be caused by font error font.\n");
+        if (text.len == 0) {
+            return SDL.createTexture(renderer, SDL.Texture.Format.bgra8888, .target, 32, 32) catch unreachable;
+        } else {
+            @panic("failed to load surface from font\nmight be caused by font error font.\n");
+        }
     };
     return SDL.createTextureFromSurface(renderer, surf) catch unreachable;
 }
