@@ -12,7 +12,7 @@ const viewError = error{
 pub const View = struct {
     cam: SDL.RectangleF, // camera
     port: SDL.Rectangle, // window part being drawn on
-    border: ?SDL.RectangleF = null, // view port limited to stay inside border
+    border: ?SDL.RectangleF = null, // cam limited to stay inside border
     max_size: ?Vec2 = null,
     min_size: ?Vec2 = null,
 
@@ -106,7 +106,6 @@ pub const View = struct {
             self.cam.x += (save_rect.width - self.cam.width) / 2;
             self.cam.y += (save_rect.height - self.cam.height) / 2;
         }
-        _ = keepInLimits(self);
     }
     pub fn getZoomed(self: View, scale: f32, point: ?SDL.Point) SDL.RectangleF {
         if (scale == 0) {

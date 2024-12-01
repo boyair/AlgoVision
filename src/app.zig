@@ -75,6 +75,13 @@ pub fn init() !void {
         .width = @intFromFloat(@as(f64, @floatFromInt(display_info.w)) * (1.0 - Design.UI.width_portion)),
         .height = display_info.h,
     });
+    cam_view.border = .{
+        .x = @floatFromInt(@min(Design.stack.position.x, Design.heap.position.x) - @as(c_int, 5000)),
+        .y = @floatFromInt(@min(Design.stack.position.x, Design.heap.position.y) - @as(c_int, 5000)),
+        .width = 20000,
+        .height = 20000,
+    };
+    std.debug.print("{d}, {d}, {d}, {d}\n", cam_view.border.?);
     Design.UI.view = View.init(.{ .x = cam_view.port.width, .y = 0, .width = display_info.w - cam_view.port.width, .height = display_info.h });
     Design.UI.view.cam.x = 0; // not require an offset when drawing ui.
     operation_manager = Operation.Manager.init();
@@ -164,6 +171,8 @@ fn renderFrame(iteration_time: i128) void {
 }
 
 fn tickUpdate(last_iteration_time: i128) void {
+    if (freecam)
+        _ = cam_view.keepInLimits();
     if (playback_speed > 0)
         operation_manager.update(@intFromFloat(@as(f128, @floatFromInt(last_iteration_time)) * playback_speed), !freecam);
     if (operation_manager.current_operation) |operation| {

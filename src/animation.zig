@@ -19,10 +19,6 @@ pub const ZoomAnimation = struct {
         };
     }
     pub fn update(self: *ZoomAnimation, time_delta: i128) void {
-        defer if (self.view.keepInLimits()) {
-            self.done = true;
-        };
-
         self.passed_duration += time_delta;
         if (self.done or self.passed_duration >= self.total_duration) {
             self.done = true;

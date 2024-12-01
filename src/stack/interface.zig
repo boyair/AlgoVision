@@ -52,7 +52,6 @@ pub fn call(comptime function: anytype, args: anytype) i64 {
     app.operation_manager.push(app.Allocator.allocator(), eval_operation);
 
     const pop_animation: ZoomAnimation = ZoomAnimation.init(&app.cam_view, null, topMethodView(stack_len_runtime), 500_000_000);
-    //non_animation.done = true;
     const pop: Operation.Operation = .{ .action = .{ .stack_pop = {} }, .animation = pop_animation, .pause_time_nano = 500_000_000 };
     app.operation_manager.push(app.Allocator.allocator(), pop);
 
