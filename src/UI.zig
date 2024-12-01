@@ -105,8 +105,8 @@ pub fn textElement(comptime value_type: type, print: fn (buf: []u8, val: value_t
         }
         fn makeTexture(value: value_type) SDL.Texture {
             var text_buffer: [60]u8 = undefined;
-            const num_str = print(&text_buffer, value);
-            const texture = SDLex.textureFromText(num_str, Design.font, color, owner_renderer);
+            const text = print(&text_buffer, value);
+            const texture = SDLex.textureFromText(text, Design.font, color, owner_renderer);
             return texture;
         }
     };
