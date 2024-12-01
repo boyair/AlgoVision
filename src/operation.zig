@@ -35,9 +35,9 @@ pub const Manager = struct {
     time_paused: i128,
     state: OperationState,
     blocked_by_error: bool = false,
-    const This = @This();
+    const Self = @This();
 
-    pub fn init() This {
+    pub fn init() Self {
         return .{
             .operation_queue = std.DoublyLinkedList(Operation){},
             .undo_queue = std.DoublyLinkedList(Action.Action){},
@@ -47,7 +47,7 @@ pub const Manager = struct {
             .state = OperationState.animate,
         };
     }
-    pub fn deinit(self: *This, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
         while (self.operation_queue.pop()) |node| {
             allocator.destroy(node);
         }
@@ -56,7 +56,7 @@ pub const Manager = struct {
         }
     }
 
-    pub fn push(self: *This, allocator: std.mem.Allocator, operation: Operation) void {
+    pub fn push(self: *Self, allocator: std.mem.Allocator, operation: Operation) void {
         if (self.blocked_by_error) // first error is always the last operation.
             return;
         const node = allocator.create(std.DoublyLinkedList(Operation).Node) catch {
@@ -77,7 +77,7 @@ pub const Manager = struct {
             self.blocked_by_error = true;
         }
     }
-    pub fn insertNext(self: *This, allocator: std.mem.Allocator, operation: Operation) void {
+    pub fn insertNext(self: *Self, allocator: std.mem.Allocator, operation: Operation) void {
         const node = allocator.create(std.DoublyLinkedList(Operation).Node) catch {
             @panic("could not allocate memory for operation.");
         };
@@ -88,7 +88,7 @@ pub const Manager = struct {
         self.operation_queue.insertAfter(self.current_operation.?, node);
     }
 
-    pub fn update(self: *This, delta_time: i128, animate: bool) void {
+    pub fn update(self: *Self, delta_time: i128, animate: bool) void {
         if (self.current_operation) |current_operation| {
             switch (self.state) {
                 .animate => {
@@ -135,7 +135,7 @@ pub const Manager = struct {
         }
     }
 
-    pub fn undoLast(self: *This) void {
+    pub fn undoLast(self: *Self) void {
         const was_current_performed = @intFromEnum(self.state) > @intFromEnum(OperationState.act);
         //find last operation (if not found return)
         const last_performed = blk: {
@@ -159,7 +159,7 @@ pub const Manager = struct {
         if (self.current_operation.?.data.animation.total_duration == 0 and self.current_operation.?.data.pause_time_nano == 0)
             self.undoLast();
     }
-    fn resetState(self: *This) void {
+    fn resetState(self: *Self) void {
         if (self.current_operation == null)
             return;
         const current_view =
@@ -168,7 +168,7 @@ pub const Manager = struct {
         self.state = OperationState.animate;
         self.animation_state.start_state = current_view;
     }
-    pub fn fastForward(self: *This) void {
+    pub fn fastForward(self: *Self) void {
         if (self.current_operation == null)
             return;
         const current_performed = @intFromEnum(self.state) > @intFromEnum(OperationState.act);
@@ -183,5 +183,11 @@ pub const Manager = struct {
 
         self.state = .done;
         self.update(0, false);
+    }
+
+    pub fn pushError(self: *Self, err: rt_err.errors) void {
+        const non_animation = Animation.nonAnimation();
+        const operation: Operation = .{ .animation = non_animation, .action = .{ .runtime_error = err }, .pause_time_nano = 0 };
+        self.push(app.Allocator.allocator(), operation);
     }
 };

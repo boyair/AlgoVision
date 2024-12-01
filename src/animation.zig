@@ -42,3 +42,8 @@ pub const ZoomAnimation = struct {
         return self.done;
     }
 };
+
+pub fn nonAnimation() ZoomAnimation {
+    var view = View.init(.{ .x = 0, .y = 0, .width = 0, .height = 0 });
+    return ZoomAnimation.init(&view, .{ .x = 0, .y = 0, .width = 0, .height = 0 }, .{ .x = 0, .y = 0, .width = 0, .height = 0 }, 0);
+}

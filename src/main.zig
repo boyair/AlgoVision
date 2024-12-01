@@ -62,11 +62,11 @@ fn fib(num: i64) i64 {
 
 pub fn main() !void {
     try app.init();
-    const list = LinkedList.init(5, gpa.allocator());
-    _ = app.stack.call(fib, 4);
-    list.pushBack(69, gpa.allocator());
-    list.next.?.pushBack(420, gpa.allocator());
-    list.mem[1] += 2;
-    list.removeNext(gpa.allocator());
+    //const list = LinkedList.init(5, gpa.allocator());
+    _ = app.stack.call(fib, 27);
+    //   list.pushBack(69, gpa.allocator());
+    //   list.next.?.pushBack(420, gpa.allocator());
+    //   list.mem[1] += 2;
+    //   list.removeNext(gpa.allocator());
     try app.start();
 }

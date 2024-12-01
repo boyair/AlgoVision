@@ -23,7 +23,11 @@ fn topMethodView(stack_len: isize) SDL.RectangleF {
 }
 
 pub fn call(comptime function: anytype, args: anytype) i64 {
-    //std.Thread.spawn(config: SpawnConfig, comptime function: anytype, args: anytype)
+    if (app.operation_manager.blocked_by_error) return 0;
+    if (stack_len_runtime >= Internals.height_limit) {
+        app.operation_manager.pushError(.{ .stack_overflow = {} });
+        return 0;
+    }
     //make animation
     const call_animation: ZoomAnimation = ZoomAnimation.init(&app.cam_view, null, topMethodView(stack_len_runtime), 500_000_000);
     //copy args to a list

@@ -44,11 +44,6 @@ fn twoblockView(idx1: usize, idx2: usize) SDL.RectangleF {
     result.height += design.block.full_size.height * 8;
     return result;
 }
-fn pushError(err: rt_err.errors) void {
-    const non_animation = ZoomAnimation.init(&app.cam_view, null, blockView(0), 0);
-    const operation: Operation.Operation = .{ .animation = non_animation, .action = .{ .runtime_error = err }, .pause_time_nano = 0 };
-    app.operation_manager.push(app.Allocator.allocator(), operation);
-}
 
 //calculates camera rect to view a range on the heap
 fn rangeView(start: usize, end: usize) SDL.RectangleF {
@@ -142,7 +137,7 @@ pub fn allocate(allocator: std.mem.Allocator, size: usize) []usize {
     }
     if (app.operation_manager.blocked_by_error) return dummy; // all operations after error are canceled.
     const range = Internals.findRandFreeRange(size) catch {
-        pushError(.{ .no_available_memrory = size });
+        app.operation_manager.pushError(.{ .no_available_memrory = size });
         return dummy;
     };
     var indices = std.ArrayList(usize).init(allocator);
@@ -158,6 +153,7 @@ pub fn allocate(allocator: std.mem.Allocator, size: usize) []usize {
 }
 
 pub fn free(allocator: std.mem.Allocator, indices: []usize) void {
+    if (app.operation_manager.blocked_by_error) return;
     for (indices) |idx| {
         if (Internals.mem_runtime[idx].owner == .user or Internals.mem_runtime[idx].owner == .pointer) {
             if (Internals.mem_runtime[idx].owner == .pointer) {
@@ -172,7 +168,7 @@ pub fn free(allocator: std.mem.Allocator, indices: []usize) void {
             const operation: Operation.Operation = .{ .animation = animation, .action = .{ .free = idx }, .pause_time_nano = 300_000_000 };
             app.operation_manager.push(app.Allocator.allocator(), operation);
         } else {
-            pushError(.{ .memory_not_allocated = idx });
+            app.operation_manager.pushError(.{ .memory_not_allocated = idx });
         }
     }
     allocator.free(indices);

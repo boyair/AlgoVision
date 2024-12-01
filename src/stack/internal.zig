@@ -7,6 +7,7 @@ const View = @import("../view.zig").View;
 const heap = @import("../heap/internal.zig");
 
 pub var stack: std.DoublyLinkedList(MethodData) = undefined;
+pub const height_limit = 20;
 pub var top_eval: ?i64 = null;
 var textureGarbage: std.ArrayList(SDL.Texture) = undefined;
 
