@@ -115,7 +115,7 @@ pub fn set(idx: usize, value: i64) void {
 }
 
 pub fn get(idx: usize) i64 {
-    if (app.operation_manager.blocked_by_error) return; // all operations after error are canceled.
+    if (app.operation_manager.blocked_by_error) return 0; // all operations after error are canceled.
     return Internals.get(idx) catch |err| switch (err) {
         error.MemoryNotAllocated => {
             @panic("trying to get non allocated memory");

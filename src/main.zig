@@ -8,7 +8,7 @@ const design = @import("design.zig");
 const app = @import("app.zig");
 const heap = app.heap;
 const Operation = @import("operation.zig");
-const SLL = app.STD.SinglyLinkedList;
+const STD = app.STD;
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 
 fn factorial(num: i64) i64 {
@@ -26,19 +26,9 @@ fn fib(num: i64) i64 {
 
 pub fn main() !void {
     try app.init();
-    var list = SLL{ .allocator = gpa.allocator() };
-    var fifth: *SLL.Node = undefined;
-    for (0..40) |idx| {
-        list.prepend(@intCast(idx));
-        if (idx == 0)
-            fifth = list.first.?;
+    var arr = STD.Array.initWithCapacity(gpa.allocator(), 13);
+    for (0..12) |idx| {
+        arr.insert(@intCast(idx));
     }
-    list.remove(fifth);
-    //const list = LinkedList.init(5, gpa.allocator());
-    //  _ = app.stack.call(fib, 27);
-    //   list.pushBack(69, gpa.allocator());
-    //   list.next.?.pushBack(420, gpa.allocator());
-    //   list.mem[1] += 2;
-    //   list.removeNext(gpa.allocator());
     try app.start();
 }
