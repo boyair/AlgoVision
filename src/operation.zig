@@ -189,5 +189,6 @@ pub const Manager = struct {
         const non_animation = Animation.nonAnimation();
         const operation: Operation = .{ .animation = non_animation, .action = .{ .runtime_error = err }, .pause_time_nano = 0 };
         self.push(app.Allocator.allocator(), operation);
+        std.debug.print("pushed error!!\n", .{});
     }
 };

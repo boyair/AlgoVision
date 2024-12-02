@@ -7,7 +7,8 @@ pub const heap = @import("heap/interface.zig");
 const rt_error = @import("runtime_error.zig");
 const heap_internal = @import("heap/internal.zig");
 pub const stack = @import("stack/interface.zig");
-pub const stack_internal = @import("stack/internal.zig");
+const stack_internal = @import("stack/internal.zig");
+pub const STD = @import("std/std.zig");
 const Design = @import("design.zig");
 const Operation = @import("operation.zig");
 const Animation = @import("animation.zig");
@@ -81,7 +82,6 @@ pub fn init() !void {
         .width = 20000,
         .height = 20000,
     };
-    std.debug.print("{d}, {d}, {d}, {d}\n", cam_view.border.?);
     Design.UI.view = View.init(.{ .x = cam_view.port.width, .y = 0, .width = display_info.w - cam_view.port.width, .height = display_info.h });
     Design.UI.view.cam.x = 0; // not require an offset when drawing ui.
     operation_manager = Operation.Manager.init();
