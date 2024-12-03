@@ -9,9 +9,9 @@ const design = @import("../design.zig").stack;
 const Vec2 = @import("../Vec2.zig").Vec2;
 const ZoomAnimation = @import("../animation.zig").ZoomAnimation;
 
-var stack_len_runtime: isize = 0;
+pub var stack_len_runtime: isize = 0;
 
-fn topMethodView(stack_len: isize) SDL.RectangleF {
+pub fn topMethodView(stack_len: isize) SDL.RectangleF {
     const view_size: f32 = @as(f32, @floatFromInt(@max(design.method.size.width, design.method.size.height))) * 2.0;
     const methodRect = SDL.Rectangle{
         .x = design.position.x,
@@ -56,4 +56,17 @@ pub fn call(comptime function: anytype, args: anytype) i64 {
     app.operation_manager.push(app.Allocator.allocator(), pop);
 
     return eval;
+}
+
+pub fn callMain() void {
+    const animation = ZoomAnimation.init(&app.cam_view, null, topMethodView(stack_len_runtime), 500_000_000);
+    stack_len_runtime += 1;
+    const main_method_data = Internals.MethodData{ .signiture = std.fmt.allocPrintZ(app.Allocator.allocator(), "main()", .{}) catch unreachable, .texture = null };
+    std.debug.print("{s}\n", .{main_method_data.signiture});
+    const call_operation: Operation.Operation = .{
+        .action = .{ .call = main_method_data },
+        .animation = animation,
+        .pause_time_nano = 400_000_000,
+    };
+    app.operation_manager.push(app.Allocator.allocator(), call_operation);
 }

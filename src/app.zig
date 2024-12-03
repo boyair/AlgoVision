@@ -49,8 +49,8 @@ pub const single_threaded = builtin.os.tag == .windows; //multithreaded crash on
 //---------------------------------------------------
 //------------------INITIALIZATION-------------------
 //---------------------------------------------------
-//---------------------------------------------------
 pub fn init() !void {
+    //---------------------------------------------------
     if (initiallized) {
         std.debug.print("tried to initiallize app more than once!\nAborting initialization", .{});
         return;
@@ -106,6 +106,7 @@ pub fn init() !void {
     initiallized = true;
     //init action
     try Operation.Action.init();
+    stack.callMain();
 }
 
 fn deinit() void {

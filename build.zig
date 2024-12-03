@@ -108,6 +108,16 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    if (exe_unit_tests.installed_path) |path| {
+        std.debug.print("pathoosssshhhhhhhhhhhhhhhhh  {s}\n", .{path});
+        b.installDirectory(.{ .source_dir = asset_path, .install_dir = .{ .prefix = {} }, .install_subdir = path });
+    }
+
+    exe_unit_tests.root_module.addImport("SDL", sdk.getWrapperModule());
+    sdk.link(exe_unit_tests, .static, .SDL2); // link SDL2 as a static library
+    sdk.link(exe_unit_tests, .static, .SDL2_ttf); // link SDL2_ttf as a static library
+    exe_unit_tests.linkSystemLibrary("SDL2_image");
+    exe_unit_tests.linkSystemLibrary("SDL2_mixer");
     const run_exe_unit_tests = b.addRunArtifact(exe_unit_tests);
 
     // Similar to creating the run step earlier, this exposes a `test` step to

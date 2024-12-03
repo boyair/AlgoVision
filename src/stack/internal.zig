@@ -11,25 +11,6 @@ pub const height_limit = 20;
 pub var top_eval: ?i64 = null;
 var textureGarbage: std.ArrayList(SDL.Texture) = undefined;
 
-// fn initMainTexture(renderer: SDL.renderer) !void {
-//    const last_target = renderer.getTarget();
-//    const texture = try SDLex.cloneTexture(design.method.bg, renderer);
-//    //copy design texture
-//    try renderer.setTarget(texture);
-//    try renderer.copy(design.method.bg, null, null);
-//    //create text texture and place it on copy
-//    const text =
-//        if (top_eval) |eval| std.fmt.allocPrintZ(app.Allocator.allocator(), "{d}", .{eval}) catch unreachable else self.signiture;
-//    const text_texture = SDLex.textureFromText(text, design.font, design.method.fg, renderer);
-//    const text_size: SDL.Size = .{ .width = @intCast(40 * text.len), .height = 250 };
-//    const info = try texture.query();
-//    const text_rect = SDLex.alignedRect(SDL.Rectangle{ .x = 0, .y = 0, .width = @intCast(info.width), .height = @intCast(info.height) }, .{ .x = 0.5, .y = 0.5 }, text_size);
-//    try renderer.copy(text_texture, text_rect, null);
-//    self.texture = texture;
-//    texture_made_counter += 1;
-//    try renderer.setTarget(last_target);
-// }
-
 pub fn init(exe_path: []const u8, comptime font_path: []const u8) !void {
     stack = std.DoublyLinkedList(MethodData){};
     design.font = try SDLex.loadResource(exe_path, font_path, app.renderer);
@@ -44,6 +25,7 @@ pub fn deinit(allocator: std.mem.Allocator) void {
     textureGarbage.deinit();
     design.font.close();
     design.method.bg.destroy();
+    design.mainMethod.destroy();
 }
 
 var TextureUpdateMut = struct {
@@ -193,16 +175,59 @@ pub fn drawFrame(renderer: SDL.Renderer, view: View) void {
     const last_color = renderer.getColor() catch unreachable;
     renderer.setColor(design.frame.color) catch unreachable;
     defer renderer.setColor(last_color) catch unreachable;
-    const top = design.position.y - height_limit * design.method.size.height - design.frame.thickness;
-    const rect: SDL.Rectangle = .{
-        .x = design.position.x - design.frame.thickness,
-        .y = top,
-        .width = design.method.size.width + design.frame.thickness * 2,
-        .height = design.frame.thickness,
-    };
-    const converted_rect = view.convert(SDLex.convertSDLRect(rect)) catch null;
-    if (converted_rect) |rct| {
-        renderer.fillRect(SDLex.convertSDLRect(rct)) catch unreachable;
+    const top = design.position.y - (height_limit - 1) * design.method.size.height - design.frame.thickness;
+    //top portion
+    {
+        const rect: SDL.Rectangle = .{
+            .x = design.position.x - design.frame.thickness,
+            .y = top,
+            .width = design.method.size.width + design.frame.thickness * 2,
+            .height = design.frame.thickness,
+        };
+        const converted_rect = view.convert(SDLex.convertSDLRect(rect)) catch null;
+        if (converted_rect) |rct| {
+            renderer.fillRect(SDLex.convertSDLRect(rct)) catch unreachable;
+        }
+    }
+
+    //left portion
+    {
+        const rect: SDL.Rectangle = .{
+            .x = design.position.x - design.frame.thickness,
+            .y = top,
+            .width = design.frame.thickness,
+            .height = design.method.size.height * height_limit + design.frame.thickness * 2,
+        };
+        const converted_rect = view.convert(SDLex.convertSDLRect(rect)) catch null;
+        if (converted_rect) |rct| {
+            renderer.fillRect(SDLex.convertSDLRect(rct)) catch unreachable;
+        }
+    }
+    //right portion
+    {
+        const rect: SDL.Rectangle = .{
+            .x = design.position.x + design.method.size.width,
+            .y = top,
+            .width = design.frame.thickness,
+            .height = design.method.size.height * height_limit + design.frame.thickness * 2,
+        };
+        const converted_rect = view.convert(SDLex.convertSDLRect(rect)) catch null;
+        if (converted_rect) |rct| {
+            renderer.fillRect(SDLex.convertSDLRect(rct)) catch unreachable;
+        }
+    }
+    //bottom portion
+    {
+        const rect: SDL.Rectangle = .{
+            .x = design.position.x - design.frame.thickness,
+            .y = design.position.y + design.method.size.height,
+            .width = design.method.size.width + design.frame.thickness * 2,
+            .height = design.frame.thickness,
+        };
+        const converted_rect = view.convert(SDLex.convertSDLRect(rect)) catch null;
+        if (converted_rect) |rct| {
+            renderer.fillRect(SDLex.convertSDLRect(rct)) catch unreachable;
+        }
     }
 }
 
@@ -210,6 +235,7 @@ pub fn draw(renderer: SDL.Renderer, view: View) void {
     drawFrame(renderer, view);
     var it = stack.first;
     var currentY = design.position.y;
+
     var idx: usize = 0;
     while (it) |node| : ({
         it = node.next;

@@ -26,9 +26,13 @@ fn fib(num: i64) i64 {
 
 pub fn main() !void {
     try app.init();
-    var arr = STD.Array.initWithCapacity(gpa.allocator(), 13);
-    for (0..12) |idx| {
-        arr.insert(@intCast(idx));
-    }
-    try app.start();
+    defer app.start() catch unreachable;
+    app.log("fib of 13 is {d}\n", .{app.stack.call(fib, 30)});
+    //var arr = STD.Array.initWithCapacity(gpa.allocator(), 13);
+    // defer arr.deinit();
+    // for (0..14) |idx| {
+    //     arr.insert(@intCast(idx));
+    //     if (idx == 5)
+    //         arr.clearRetainingCapacity();
+    // }
 }

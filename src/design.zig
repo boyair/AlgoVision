@@ -78,16 +78,17 @@ pub const UI = struct {
 pub const stack = struct {
     //defined in stack init function
     pub var font: SDL.ttf.Font = undefined;
-    pub const position: SDL.Point = .{ .x = -2265, .y = 8900 };
-    pub const frame = struct {
-        pub var texture: SDL.Texture = undefined;
-        pub const rect: SDL.Rectangle = .{ .x = -3000, .y = 0, .width = 2000, .height = 10000 };
-    };
+    pub const position: SDL.Point = .{ .x = -1265, .y = 4000 - 425 };
     pub const method = struct {
         pub const fg: SDL.Color = SDL.Color.red;
         //defined in stack init function. . .
         pub var bg: SDL.Texture = undefined;
         pub const size: SDL.Size = .{ .width = 850, .height = 425 };
+    };
+    pub var mainMethod: SDL.Texture = undefined; // initiallized in stack init function
+    pub const frame = struct {
+        pub const color = SDL.Color.black;
+        pub const thickness = 40;
     };
 };
 pub const action = struct {
