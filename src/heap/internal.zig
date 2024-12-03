@@ -68,6 +68,7 @@ pub fn init(exe_path: []const u8, comptime font_path: []const u8, renderer: SDL.
     };
     batches_to_update = std.AutoHashMap(idx2D, void).init(allocator);
     values_to_update = std.AutoHashMap(idx2D, void).init(allocator);
+    design.title.texture = SDLex.textureFromText("Heap", design.font, design.title.color, renderer);
 }
 
 pub fn deinit() void {
@@ -259,6 +260,7 @@ pub fn destroyTextures() void {
 }
 
 pub fn draw(renderer: SDL.Renderer, view: View) void {
+    view.draw(SDLex.convertSDLRect(design.title.rect), design.title.texture, renderer);
     texture_update_mut.lock();
     //updates the batches that has changed
     if (batches_to_update.count() > 0) {

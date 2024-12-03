@@ -46,7 +46,7 @@ pub const Pointer = struct {
             switch (source) {
             .stack => |idx| stack: {
                 const y = Design.stack.position.y -
-                    idx * Design.stack.method.size.height;
+                    @as(c_int, @intCast(idx * Design.stack.method.size.height));
                 const x = Design.stack.position.x + Design.stack.method.size.width;
                 break :stack Vec2{ .x = @floatFromInt(x), .y = @floatFromInt(y) };
             },

@@ -190,7 +190,19 @@ pub fn drawFrame(renderer: SDL.Renderer, view: View) void {
             renderer.fillRect(SDLex.convertSDLRect(rct)) catch unreachable;
         }
     }
-
+    //bottom portion
+    {
+        const rect: SDL.Rectangle = .{
+            .x = design.position.x - design.frame.thickness,
+            .y = design.position.y + design.method.size.height * height_limit,
+            .width = design.method.size.width + design.frame.thickness * 2,
+            .height = design.frame.thickness,
+        };
+        const converted_rect = view.convert(SDLex.convertSDLRect(rect)) catch null;
+        if (converted_rect) |rct| {
+            renderer.fillRect(SDLex.convertSDLRect(rct)) catch unreachable;
+        }
+    }
     //left portion
     {
         const rect: SDL.Rectangle = .{
@@ -211,19 +223,6 @@ pub fn drawFrame(renderer: SDL.Renderer, view: View) void {
             .y = top,
             .width = design.frame.thickness,
             .height = design.method.size.height * height_limit + design.frame.thickness * 2,
-        };
-        const converted_rect = view.convert(SDLex.convertSDLRect(rect)) catch null;
-        if (converted_rect) |rct| {
-            renderer.fillRect(SDLex.convertSDLRect(rct)) catch unreachable;
-        }
-    }
-    //bottom portion
-    {
-        const rect: SDL.Rectangle = .{
-            .x = design.position.x - design.frame.thickness,
-            .y = design.position.y + design.method.size.height * height_limit,
-            .width = design.method.size.width + design.frame.thickness * 2,
-            .height = design.frame.thickness,
         };
         const converted_rect = view.convert(SDLex.convertSDLRect(rect)) catch null;
         if (converted_rect) |rct| {
