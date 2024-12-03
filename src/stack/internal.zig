@@ -11,13 +11,30 @@ pub const height_limit = 20;
 pub var top_eval: ?i64 = null;
 var textureGarbage: std.ArrayList(SDL.Texture) = undefined;
 
+// fn initMainTexture(renderer: SDL.renderer) !void {
+//    const last_target = renderer.getTarget();
+//    const texture = try SDLex.cloneTexture(design.method.bg, renderer);
+//    //copy design texture
+//    try renderer.setTarget(texture);
+//    try renderer.copy(design.method.bg, null, null);
+//    //create text texture and place it on copy
+//    const text =
+//        if (top_eval) |eval| std.fmt.allocPrintZ(app.Allocator.allocator(), "{d}", .{eval}) catch unreachable else self.signiture;
+//    const text_texture = SDLex.textureFromText(text, design.font, design.method.fg, renderer);
+//    const text_size: SDL.Size = .{ .width = @intCast(40 * text.len), .height = 250 };
+//    const info = try texture.query();
+//    const text_rect = SDLex.alignedRect(SDL.Rectangle{ .x = 0, .y = 0, .width = @intCast(info.width), .height = @intCast(info.height) }, .{ .x = 0.5, .y = 0.5 }, text_size);
+//    try renderer.copy(text_texture, text_rect, null);
+//    self.texture = texture;
+//    texture_made_counter += 1;
+//    try renderer.setTarget(last_target);
+// }
+
 pub fn init(exe_path: []const u8, comptime font_path: []const u8) !void {
     stack = std.DoublyLinkedList(MethodData){};
     design.font = try SDLex.loadResource(exe_path, font_path, app.renderer);
     design.method.bg = try SDLex.loadResource(exe_path, "/textures/method.png", app.renderer);
     textureGarbage = try std.ArrayList(SDL.Texture).initCapacity(app.Allocator.allocator(), 3);
-
-    design.frame.texture = try SDLex.loadResource(app.exe_path, "/textures/ram.png", app.renderer);
 }
 pub fn deinit(allocator: std.mem.Allocator) void {
     for (stack.pop()) |node| {
@@ -27,7 +44,6 @@ pub fn deinit(allocator: std.mem.Allocator) void {
     textureGarbage.deinit();
     design.font.close();
     design.method.bg.destroy();
-    design.frame.texture.destroy();
 }
 
 var TextureUpdateMut = struct {
@@ -139,7 +155,7 @@ pub const MethodData = struct {
         const texture = try SDLex.cloneTexture(design.method.bg, renderer);
         //copy design texture
         try renderer.setTarget(texture);
-        try renderer.copy(design.method.bg, null, null);
+        //try renderer.copy(design.method.bg, null, null);
         //create text texture and place it on copy
         const text =
             if (top_eval) |eval| std.fmt.allocPrintZ(app.Allocator.allocator(), "{d}", .{eval}) catch unreachable else self.signiture;
@@ -173,10 +189,25 @@ pub fn pop(allocator: std.mem.Allocator) void {
         top_eval = null;
     }
 }
+pub fn drawFrame(renderer: SDL.Renderer, view: View) void {
+    const last_color = renderer.getColor() catch unreachable;
+    renderer.setColor(design.frame.color) catch unreachable;
+    defer renderer.setColor(last_color) catch unreachable;
+    const top = design.position.y - height_limit * design.method.size.height - design.frame.thickness;
+    const rect: SDL.Rectangle = .{
+        .x = design.position.x - design.frame.thickness,
+        .y = top,
+        .width = design.method.size.width + design.frame.thickness * 2,
+        .height = design.frame.thickness,
+    };
+    const converted_rect = view.convert(SDLex.convertSDLRect(rect)) catch null;
+    if (converted_rect) |rct| {
+        renderer.fillRect(SDLex.convertSDLRect(rct)) catch unreachable;
+    }
+}
 
 pub fn draw(renderer: SDL.Renderer, view: View) void {
-    view.draw(SDLex.convertSDLRect(design.frame.rect), design.frame.texture, app.renderer);
-
+    drawFrame(renderer, view);
     var it = stack.first;
     var currentY = design.position.y;
     var idx: usize = 0;
@@ -186,7 +217,12 @@ pub fn draw(renderer: SDL.Renderer, view: View) void {
     }) {
         idx += 1;
         if (node.data.texture) |texture| {
-            const rect = view.convert(SDLex.convertSDLRect(SDL.Rectangle{ .x = design.position.x, .y = currentY, .width = design.method.size.width, .height = design.method.size.height })) catch continue;
+            const rect = view.convert(SDLex.convertSDLRect(SDL.Rectangle{
+                .x = design.position.x,
+                .y = currentY,
+                .width = design.method.size.width,
+                .height = design.method.size.height,
+            })) catch continue;
             renderer.copy(texture, SDLex.convertSDLRect(rect), null) catch unreachable;
         }
     }
