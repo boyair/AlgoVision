@@ -28,11 +28,4 @@ pub fn main() !void {
     try app.init();
     defer app.start() catch unreachable;
     app.log("fib of 13 is {d}\n", .{app.stack.call(fib, 30)});
-    //var arr = STD.Array.initWithCapacity(gpa.allocator(), 13);
-    // defer arr.deinit();
-    // for (0..14) |idx| {
-    //     arr.insert(@intCast(idx));
-    //     if (idx == 5)
-    //         arr.clearRetainingCapacity();
-    // }
 }

@@ -15,6 +15,7 @@ pub fn init(exe_path: []const u8, comptime font_path: []const u8) !void {
     stack = std.DoublyLinkedList(MethodData){};
     design.font = try SDLex.loadResource(exe_path, font_path, app.renderer);
     design.method.bg = try SDLex.loadResource(exe_path, "/textures/method.png", app.renderer);
+    design.title.texture = SDLex.textureFromText("Stack", design.font, design.title.color, app.renderer);
     textureGarbage = try std.ArrayList(SDL.Texture).initCapacity(app.Allocator.allocator(), 3);
 }
 pub fn deinit(allocator: std.mem.Allocator) void {
@@ -175,7 +176,7 @@ pub fn drawFrame(renderer: SDL.Renderer, view: View) void {
     const last_color = renderer.getColor() catch unreachable;
     renderer.setColor(design.frame.color) catch unreachable;
     defer renderer.setColor(last_color) catch unreachable;
-    const top = design.position.y - (height_limit - 1) * design.method.size.height - design.frame.thickness;
+    const top = design.position.y - design.frame.thickness;
     //top portion
     {
         const rect: SDL.Rectangle = .{
@@ -220,7 +221,7 @@ pub fn drawFrame(renderer: SDL.Renderer, view: View) void {
     {
         const rect: SDL.Rectangle = .{
             .x = design.position.x - design.frame.thickness,
-            .y = design.position.y + design.method.size.height,
+            .y = design.position.y + design.method.size.height * height_limit,
             .width = design.method.size.width + design.frame.thickness * 2,
             .height = design.frame.thickness,
         };
@@ -232,9 +233,10 @@ pub fn drawFrame(renderer: SDL.Renderer, view: View) void {
 }
 
 pub fn draw(renderer: SDL.Renderer, view: View) void {
+    view.draw(SDLex.convertSDLRect(design.title.rect), design.title.texture, renderer);
     drawFrame(renderer, view);
     var it = stack.first;
-    var currentY = design.position.y;
+    var currentY = design.position.y + (height_limit - 1) * design.method.size.height;
 
     var idx: usize = 0;
     while (it) |node| : ({

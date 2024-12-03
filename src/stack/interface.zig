@@ -15,7 +15,7 @@ pub fn topMethodView(stack_len: isize) SDL.RectangleF {
     const view_size: f32 = @as(f32, @floatFromInt(@max(design.method.size.width, design.method.size.height))) * 2.0;
     const methodRect = SDL.Rectangle{
         .x = design.position.x,
-        .y = design.position.y - @as(c_int, @intCast(design.method.size.height * stack_len)),
+        .y = design.position.y - @as(c_int, @intCast(design.method.size.height * (stack_len - Internals.height_limit))),
         .width = design.method.size.width,
         .height = design.method.size.height,
     };
