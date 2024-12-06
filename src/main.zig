@@ -1,13 +1,7 @@
 const std = @import("std");
 const SDL = @import("SDL");
-const Vec2 = @import("Vec2.zig").Vec2;
-const View = @import("view.zig").View;
-const SDLex = @import("SDLex.zig");
-const ZoomAnimation = @import("animation.zig").ZoomAnimation;
-const design = @import("design.zig");
-const app = @import("app.zig");
+const app = @import("AlgoVision");
 const heap = app.heap;
-const Operation = @import("operation.zig");
 const STD = app.STD;
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 
@@ -27,5 +21,5 @@ fn fib(num: i64) i64 {
 pub fn main() !void {
     try app.init();
     defer app.start() catch unreachable;
-    app.log("fib of 13 is {d}\n", .{app.stack.call(fib, 30)});
+    app.log("5 factorial is {d}", .{app.stack.call(fib, 30)});
 }
