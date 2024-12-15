@@ -21,13 +21,15 @@ pub fn fullInstall(b: *std.Build, exe: *std.Build.Step.Compile, module_name: []c
     const mod = getModule(b);
     exe.root_module.addImport(module_name, mod);
     linkSDL(b, exe);
+    b.installArtifact(exe); //installing artifact before assets to ensure existance of bin file.
     installAssets(b) catch {
         @panic("failed to install assets");
     };
 }
 
 pub fn installAssets(b: *std.Build) !void {
-    const bin_directory: std.fs.Dir = try std.fs.openDirAbsolute(try std.fs.path.join(b.allocator, &.{ b.install_path, "bin" }), .{});
+    const bin_path = try std.fs.path.join(b.allocator, &.{ b.install_path, "bin" });
+    const bin_directory: std.fs.Dir = try std.fs.openDirAbsolute(bin_path, .{});
     var walker = try asset_path.walk(b.allocator);
     defer walker.deinit();
     while (try walker.next()) |entry| {
