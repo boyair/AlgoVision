@@ -62,7 +62,6 @@
         "build.zig",
         "build.zig.zon",
         "src",
-        "windows",
         "assets",
         // For example...
         //"LICENSE",
