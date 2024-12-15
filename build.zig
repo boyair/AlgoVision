@@ -21,7 +21,6 @@ pub fn fullInstall(b: *std.Build, exe: *std.Build.Step.Compile, module_name: []c
     const mod = getModule(b);
     exe.root_module.addImport(module_name, mod);
     linkSDL(b, exe);
-    b.installArtifact(exe); //installing artifact before assets to ensure existance of bin file.
     installAssets(b) catch {
         @panic("failed to install assets");
     };
@@ -29,7 +28,11 @@ pub fn fullInstall(b: *std.Build, exe: *std.Build.Step.Compile, module_name: []c
 
 pub fn installAssets(b: *std.Build) !void {
     const bin_path = try std.fs.path.join(b.allocator, &.{ b.install_path, "bin" });
-    const bin_directory: std.fs.Dir = try std.fs.openDirAbsolute(bin_path, .{});
+    const bin_directory: std.fs.Dir = std.fs.openDirAbsolute(bin_path, .{}) catch blk: {
+        var dir = try std.fs.openDirAbsolute(b.build_root.path.?, .{});
+        try dir.makePath("zig-out/bin"); //if path already exists this code wont be reached.
+        break :blk try std.fs.openDirAbsolute(bin_path, .{});
+    };
     var walker = try asset_path.walk(b.allocator);
     defer walker.deinit();
     while (try walker.next()) |entry| {
