@@ -16,6 +16,19 @@ pub fn build(b: *std.Build) void {
     }, .{ .iterate = true }) catch {
         @panic("unable to open asset directory");
     };
+    const exe = b.addExecutable(.{
+        .name = "example",
+        .root_source_file = b.path("example/example.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    fullInstall(b, exe, "AlgoVision");
+    //const install_artifact = b.addInstallArtifact(exe, .{});
+    b.installArtifact(exe);
+    const run_step = b.step("run-example", "runs the example program");
+    const run_example = b.addRunArtifact(exe);
+    run_example.step.dependOn(b.getInstallStep());
+    run_step.dependOn(&run_example.step);
 }
 pub fn fullInstall(b: *std.Build, exe: *std.Build.Step.Compile, module_name: []const u8) void {
     const mod = getModule(b);
