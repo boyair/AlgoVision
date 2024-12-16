@@ -2,6 +2,8 @@ const std = @import("std");
 pub const Sdk = @import("SDL");
 var asset_path: std.fs.Dir = undefined;
 var module: *std.Build.Module = undefined;
+var is_lib = false;
+var lib_build: *std.Build = undefined;
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -16,21 +18,30 @@ pub fn build(b: *std.Build) void {
     }, .{ .iterate = true }) catch {
         @panic("unable to open asset directory");
     };
-    const exe = b.addExecutable(.{
-        .name = "example",
-        .root_source_file = b.path("example/example.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    fullInstall(b, exe, "AlgoVision");
-    //const install_artifact = b.addInstallArtifact(exe, .{});
-    b.installArtifact(exe);
-    const run_step = b.step("run-example", "runs the example program");
-    const run_example = b.addRunArtifact(exe);
-    run_example.step.dependOn(b.getInstallStep());
-    run_step.dependOn(&run_example.step);
+    if (!is_lib) {
+        const exe = b.addExecutable(.{
+            .name = "example",
+            .root_source_file = b.path("example/example.zig"),
+            .target = target,
+            .optimize = optimize,
+        });
+        const mod = getModule(b);
+        exe.root_module.addImport("AlgoVision", mod);
+        linkSDL(b, exe);
+        installAssets(b) catch {
+            @panic("failed to install assets");
+        };
+        //const install_artifact = b.addInstallArtifact(exe, .{});
+        b.installArtifact(exe);
+        const run_step = b.step("run-example", "runs the example program");
+        const run_example = b.addRunArtifact(exe);
+        run_example.step.dependOn(b.getInstallStep());
+        run_step.dependOn(&run_example.step);
+    }
 }
 pub fn fullInstall(b: *std.Build, exe: *std.Build.Step.Compile, module_name: []const u8) void {
+    is_lib = true;
+    _ = b.dependency("AlgoVision", .{});
     const mod = getModule(b);
     exe.root_module.addImport(module_name, mod);
     linkSDL(b, exe);
