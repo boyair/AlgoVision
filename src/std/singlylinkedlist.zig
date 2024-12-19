@@ -9,11 +9,8 @@ pub const SinglyLinkedList = struct {
     ///
     /// Arguments:
     ///     new_node: Pointer to the new node to insert.
-    pub fn prepend(self: *Self, value: i64) void {
-        const new_node = Node.init(value, self.allocator);
-        if (self.first) |first| {
-            heap.setPointer(new_node.mem[1], first.mem[0]);
-        }
+    pub fn prepend(self: *Self, new_node: *Node) void {
+        heap.setPointer(new_node.mem[1], if (self.first) |first| first.mem[0] else 0);
         new_node.next = self.first;
         self.first = new_node;
     }
@@ -46,29 +43,37 @@ pub const SinglyLinkedList = struct {
         mem: []usize,
         next: ?*Node = null,
 
-        fn init(value: i64, allocator: std.mem.Allocator) *Node {
-            const list = allocator.create(Node) catch unreachable;
-            list.* = .{ .mem = heap.allocate(allocator, 2), .value = value, .next = null };
-            heap.set(list.mem[0], value);
-            heap.set(list.mem[1], 0);
-            return list;
+        pub fn init(value: i64, allocator: std.mem.Allocator) *Node {
+            //creates memory for mode (for real node)
+            const node = allocator.create(Node) catch unreachable;
+            //creates memory for mode (algovision)
+            node.* = .{ .mem = heap.allocate(allocator, 2), .value = value, .next = null };
+            //set value for node and pointer to null (like in its creation on prev line)
+            heap.set(node.mem[0], value);
+            heap.set(node.mem[1], 0);
+            return node;
         }
 
-        //push a value to the end of the list
-
-        fn insertAfter(self: *Node, next: ?*Node) void {
-            if (next) |nxt| {
-                heap.setPointer(self.mem[1], nxt.mem[0]);
-            } else {
-                heap.setPointer(self.mem[1], 0);
-            }
-            self.next = next;
+        //push a value after a given node
+        pub fn insertAfter(self: *Node, new: *Node) void {
+            //set pointer from new node to self's next
+            heap.setPointer(new.mem[1], if (self.next) |next| next.mem[0] else 0);
+            new.next = self.next;
+            //set pointer from self to new node
+            heap.setPointer(self.mem[1], new.mem[0]);
+            //set pointer from self to new node (in real node)
+            self.next = new;
         }
 
-        fn removeNext(self: *Node, allocator: std.mem.Allocator) void {
+        pub fn removeNext(self: *Node, allocator: std.mem.Allocator) void {
             if (self.next) |next| {
+                //set pointer to skip next
                 self.insertAfter(next.next);
+                //free memory of next
                 heap.free(allocator, next.mem);
+            } else {
+                //warn the user for trying to free a a null node.
+                app.log("WARNING: tried to free a null node!!\nskipped.\n", .{});
             }
         }
     };
