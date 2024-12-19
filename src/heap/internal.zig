@@ -21,9 +21,15 @@ const block = struct {
 
     fn bufPrintZ(self: block, buffer: []u8) [:0]const u8 {
         if (self.owner == .pointer) {
-            return std.fmt.bufPrintZ(buffer, "0x{x:>5}", .{self.val}) catch "???";
+            if (self.val == 0)
+                return "NULL";
+            return std.fmt.bufPrintZ(buffer, "0x{x:<3}", .{@abs(self.val)}) catch "???";
         } else {
-            return std.fmt.bufPrintZ(buffer, "{d:>5}", .{self.val}) catch "???";
+            if (self.val < 0) {
+                return std.fmt.bufPrintZ(buffer, "-{d:^4}", .{@abs(self.val)}) catch "???";
+            } else {
+                return std.fmt.bufPrintZ(buffer, "{d:>5}", .{@abs(self.val)}) catch "???";
+            }
         }
     }
 };
