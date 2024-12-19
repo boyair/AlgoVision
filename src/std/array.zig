@@ -38,10 +38,11 @@ pub const Array = struct {
         self.capacity = capacity;
         //recreate the array with new capacity
         const new_items = heap.allocate(self.allocator, self.capacity);
-
+        //copy items from old array to new array
         for (self.mem, new_items[0..self.mem.len]) |old_itm, new_itm| {
             heap.set(new_itm, heap.get(old_itm));
         }
+        //free old array
         heap.free(self.allocator, self.mem);
         self.mem = new_items;
     }
