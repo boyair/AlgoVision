@@ -22,19 +22,16 @@ pub fn build(b: *std.Build) void {
         "example",
         "choose which example to compile",
     );
-    if (maybe_example) |_| {
+    if (maybe_example) |example| {
         const exe = b.addExecutable(.{
             .name = "example",
-            .root_source_file = b.path("example/example.zig"),
+            .root_source_file = b.path(
+                std.fmt.allocPrint(b.allocator, "example/{s}.zig", .{example}) catch unreachable,
+            ),
             .target = target,
             .optimize = optimize,
         });
-        const mod = getModule(b);
-        exe.root_module.addImport("AlgoVision", mod);
-        linkSDL(b, exe);
-        installAssets(b) catch {
-            @panic("failed to install assets");
-        };
+        fullInstall(b, exe, "AlgoVision");
         b.installArtifact(exe);
         const run_step = b.step("run", "runs the example program");
         const run_example = b.addRunArtifact(exe);
