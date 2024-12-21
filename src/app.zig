@@ -20,9 +20,6 @@ var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 pub var Allocator = std.heap.ArenaAllocator.init(gpa.allocator());
 pub var exe_path: []u8 = undefined;
 
-const fps = 240;
-const frame_time_nano = 1_000_000_000 / fps;
-
 const State = enum {
     heap,
     stack,
@@ -35,7 +32,7 @@ pub var cam_view: View = undefined;
 var initiallized = false;
 var state: State = State.heap;
 var running: bool = true;
-const tick_rate = 1000; // logic updates per seconds
+const tick_rate = 2000; // logic updates per seconds (on multithreaded build)
 const tick_time = 1_000_000_000 / tick_rate; // time for logic update in ns
 var loading_screen_texture: SDL.Texture = undefined;
 var playback_speed: f128 = 1.0;
@@ -139,7 +136,7 @@ pub fn start() !void {
     } else {
         const logic_thread = try std.Thread.spawn(.{}, runLogic, .{});
         defer logic_thread.join();
-        repeatTimed(renderFrame, frame_time_nano);
+        repeatTimed(renderFrame, Design.frame_time_nano);
     }
 }
 
@@ -235,17 +232,17 @@ fn tickUpdate(last_iteration_time: i128) void {
 //---------------------------------------------------
 //---------------------------------------------------
 
-fn repeatTimed(func: fn (i128) void, iterationTime: i128) void {
-    var last_iteration_time: i128 = 0;
+/// repeats a function call baased on given minimum time interval.
+fn repeatTimed(func: fn (i128) void, iterationTime: u64) void {
+    var last_iteration_time: u64 = 0;
+    var timer: std.time.Timer = undefined;
     while (running) {
-        const start_time = std.time.nanoTimestamp();
-        func(last_iteration_time);
-        const sleep_time: i128 = iterationTime - (std.time.nanoTimestamp() - start_time);
-        if (sleep_time > 0) {
-            std.time.sleep(@intCast(sleep_time));
-        }
-        const end_time = std.time.nanoTimestamp();
-        last_iteration_time = end_time - start_time;
+        timer = std.time.Timer.start() catch unreachable;
+        func(@intCast(last_iteration_time));
+        const sleep_time = @subWithOverflow(iterationTime, timer.read());
+        if (sleep_time[1] == 0)
+            std.time.sleep(sleep_time[0]);
+        last_iteration_time = timer.lap();
     }
 }
 fn runLogic() void {
