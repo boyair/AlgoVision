@@ -255,7 +255,6 @@ fn runLogic() void {
 //---------------------------------------------------
 pub fn log(comptime str: []const u8, args: anytype) void {
     const string = std.fmt.allocPrint(Allocator.allocator(), str, args) catch unreachable;
-    var non_animation: Animation.ZoomAnimation = Animation.ZoomAnimation.init(&cam_view, null, .{ .x = 0, .y = 0, .width = 0, .height = 0 }, 0);
-    non_animation.done = true;
+    const non_animation = Animation.nonAnimation();
     operation_manager.push(Allocator.allocator(), .{ .action = .{ .print = string }, .animation = non_animation, .pause_time_nano = 0 });
 }
