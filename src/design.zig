@@ -5,8 +5,14 @@ pub const fps = 240;
 pub const frame_time_nano = 1_000_000_000 / fps;
 
 pub const heap = struct {
+    pub const num_title = struct {
+        pub var font: SDL.ttf.Font = undefined;
+        pub const color: SDL.Color = SDL.Color.blue;
+        pub const size = block.size;
+    };
+
     pub const title = struct {
-        pub var texture: SDL.Texture = undefined; // initiallized in stack init function
+        pub var texture: SDL.Texture = undefined; // initiallized in heap init function
         pub const color = SDL.Color.red;
         pub const rect: SDL.Rectangle = .{ .width = 500, .height = 200, .x = position.x, .y = position.y - 300 };
     };

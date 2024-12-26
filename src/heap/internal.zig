@@ -6,7 +6,7 @@ const Operation = @import("../operation.zig");
 const Vec2 = @import("../Vec2.zig").Vec2;
 const SDLex = @import("../SDLex.zig");
 const design = @import("../design.zig").heap;
-pub const rows = 40;
+pub const rows = 20;
 pub const columns = 40;
 const Ownership = enum(u8) {
     free, //block is available for allocation.
@@ -14,6 +14,7 @@ const Ownership = enum(u8) {
     user, //block is allocated by user and can be used.
     pointer, //block is allocated and used as a pointer.
 };
+var coords_tex: [@max(rows, columns)]SDL.Texture = undefined;
 
 const block = struct {
     val: i64,
@@ -23,7 +24,8 @@ const block = struct {
         if (self.owner == .pointer) {
             if (self.val == 0)
                 return "NULL";
-            return std.fmt.bufPrintZ(buffer, "0x{x:<3}", .{@abs(self.val)}) catch "???";
+            const idx_2d = idx2D.init(@intCast(self.val), columns);
+            return std.fmt.bufPrintZ(buffer, "{d},{d}", .{ idx_2d.x, idx_2d.y }) catch "???";
         } else {
             if (self.val < 0) {
                 return std.fmt.bufPrintZ(buffer, "-{d:^4}", .{@abs(self.val)}) catch "???";
@@ -66,6 +68,9 @@ pub var batch_tex: [rows / batch_size.height + 1][columns / batch_size.width + 1
 
 pub fn init(exe_path: []const u8, comptime font_path: []const u8, renderer: SDL.Renderer, allocator: std.mem.Allocator) void {
     design.font = SDLex.loadResource(exe_path, font_path, app.renderer) catch {
+        @panic("failed to load font!");
+    };
+    design.num_title.font = SDLex.loadResource(exe_path, font_path, app.renderer) catch {
         @panic("failed to load font!");
     };
     initRand();
@@ -127,6 +132,13 @@ fn initAvailability() void {
 //---------------------------------------------------
 
 pub fn initTextures(renderer: SDL.Renderer) !void {
+    var buf: [4]u8 = undefined;
+    for (&coords_tex, 0..) |*texture, idx| {
+        const num_str = std.fmt.bufPrintZ(&buf, "{d:^3}", .{idx}) catch {
+            @panic("failed to create texture for coordinates!");
+        };
+        texture.* = SDLex.textureFromText(num_str, design.num_title.font, design.num_title.color, renderer);
+    }
     for (0..batch_tex.len) |row| {
         for (0..batch_tex[0].len) |column| {
             try initBatch(.{ .y = row, .x = column }, renderer);
@@ -292,6 +304,23 @@ pub fn draw(renderer: SDL.Renderer, view: View) void {
         for (0..batch_tex[0].len) |column| {
             drawBatch(.{ .y = row, .x = column }, renderer, view);
         }
+    }
+    //draw coordinate indicators
+    for (0..rows) |row| {
+        var rect = blockRect((idx2D{ .x = 0, .y = row }).to1D(columns));
+        rect.x -= design.block.full_size.width;
+        view.draw(rect, coords_tex[row], renderer);
+        //renderer.copy(coords_tex[row], rect, null) catch {
+        //    @panic("drawing error!");
+        //};
+    }
+    for (0..columns) |col| {
+        var rect = blockRect((idx2D{ .x = col, .y = 0 }).to1D(columns));
+        rect.y -= design.block.full_size.height;
+        view.draw(rect, coords_tex[col], renderer);
+        //renderer.copy(coords_tex[row], rect, null) catch {
+        //    @panic("drawing error!");
+        //};
     }
 }
 
