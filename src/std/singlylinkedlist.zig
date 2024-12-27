@@ -39,21 +39,25 @@ pub const SinglyLinkedList = struct {
     }
 
     pub const Node = struct {
-        value: i64,
         mem: []usize,
         next: ?*Node = null,
-
         pub fn init(value: i64, allocator: std.mem.Allocator) *Node {
             //creates memory for mode (for real node)
             const node = allocator.create(Node) catch unreachable;
             //creates memory for mode (algovision)
-            node.* = .{ .mem = heap.allocate(allocator, 2), .value = value, .next = null };
+            node.* = .{ .mem = heap.allocate(allocator, 2), .next = null };
             //set value for node and pointer to null (like in its creation on prev line)
             heap.set(node.mem[0], value);
-            heap.set(node.mem[1], 0);
+            heap.setPointer(node.mem[1], 0);
             return node;
         }
 
+        pub fn setValue(self: *Node, new_value: i64) void {
+            heap.set(self.mem[0], new_value);
+        }
+        pub fn getValue(self: *Node) i64 {
+            return heap.get(self.mem[0]);
+        }
         //push a value after a given node
         pub fn insertAfter(self: *Node, new: *Node) void {
             //set pointer from new node to self's next
