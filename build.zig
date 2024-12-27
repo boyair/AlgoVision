@@ -26,7 +26,7 @@ pub fn build(b: *std.Build) void {
         const exe = b.addExecutable(.{
             .name = "example",
             .root_source_file = b.path(
-                std.fmt.allocPrint(b.allocator, "example/{s}.zig", .{example}) catch unreachable,
+                std.fmt.allocPrint(b.allocator, "examples/{s}.zig", .{example}) catch unreachable,
             ),
             .target = target,
             .optimize = optimize,
