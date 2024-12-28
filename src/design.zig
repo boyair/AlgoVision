@@ -21,7 +21,7 @@ pub const heap = struct {
 
     pub const block = struct {
         pub const size: SDL.Size = .{ .width = 88, .height = 88 };
-        pub const padding: SDL.Size = .{ .width = 12, .height = 12 };
+        pub const padding: SDL.Size = .{ .width = 4, .height = 4 };
         pub const full_size: SDL.Size = .{ .width = size.width + padding.width, .height = size.height + padding.height };
         pub const grid_color: SDL.Color = SDL.Color.black;
         pub const Colors = struct {

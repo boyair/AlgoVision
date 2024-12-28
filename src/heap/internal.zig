@@ -16,11 +16,11 @@ const Ownership = enum(u8) {
 };
 var coords_tex: [@max(rows, columns)]SDL.Texture = undefined;
 
-const block = struct {
+const Block = struct {
     val: i64,
     owner: Ownership,
 
-    fn bufPrintZ(self: block, buffer: []u8) [:0]const u8 {
+    fn bufPrintZ(self: Block, buffer: []u8) [:0]const u8 {
         if (self.owner == .pointer) {
             if (self.val == 0)
                 return "NULL";
@@ -33,6 +33,52 @@ const block = struct {
                 return std.fmt.bufPrintZ(buffer, "{d:>5}", .{@abs(self.val)}) catch "???";
             }
         }
+    }
+
+    fn createTexture(self: Block, renderer: SDL.Renderer) !SDL.Texture {
+        const bg_texture = try SDL.createTexture(
+            renderer,
+            .rgba8888,
+            .target,
+            design.block.full_size.width,
+            design.block.full_size.height,
+        );
+        const last_target = renderer.getTarget();
+        try renderer.setTarget(bg_texture);
+        defer renderer.setTarget(last_target) catch unreachable;
+
+        {
+            const last_color = try renderer.getColor();
+            defer renderer.setColor(last_color) catch unreachable;
+            try renderer.setColor(design.block.grid_color);
+            try renderer.fillRect(.{ .x = 0, .y = 0, .width = design.block.full_size.width, .height = design.block.full_size.height });
+        }
+
+        const colors = switch (self.owner) {
+            .free => design.block.free,
+            .taken => design.block.taken,
+            .user, .pointer => design.block.user,
+        };
+
+        const inner_rect: SDL.Rectangle = .{
+            .x = design.block.padding.width / 2,
+            .y = design.block.padding.height / 2,
+            .width = design.block.size.width,
+            .height = design.block.size.height,
+        };
+        {
+            const last_color = try renderer.getColor();
+            defer renderer.setColor(last_color) catch unreachable;
+            try renderer.setColor(colors.bg);
+
+            try renderer.fillRect(inner_rect);
+        }
+        var txt_buffer: [12]u8 = undefined;
+        const txt = self.bufPrintZ(&txt_buffer);
+        const text_texture = SDLex.textureFromText(txt, design.font, colors.fg, renderer);
+        try renderer.copy(text_texture, inner_rect, null);
+        text_texture.destroy();
+        return bg_texture;
     }
 };
 
@@ -56,9 +102,9 @@ const HeapError = error{
     MemoryNotAllocated,
 };
 
-pub var mem: [rows * columns]block = undefined;
+pub var mem: [rows * columns]Block = undefined;
 // a copy that is nodified on fuction calls from the user instead of by operation
-pub var mem_runtime: [rows * columns]block = undefined;
+pub var mem_runtime: [rows * columns]Block = undefined;
 var batches_to_update: std.AutoHashMap(idx2D, void) = undefined;
 var values_to_update: std.AutoHashMap(idx2D, void) = undefined;
 
@@ -146,9 +192,9 @@ pub fn initTextures(renderer: SDL.Renderer) !void {
     }
 }
 
+//TODO: change frame drawing to be done on a per block basis
 fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
     //make buffers for texture creation.
-    var text_buffer: [12]u8 = undefined;
     const last_target = renderer.getTarget();
     const last_color = try SDL.Renderer.getColor(renderer);
 
@@ -175,21 +221,20 @@ fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
             if (row >= rows or column >= columns)
                 continue;
 
-            const num_str = mem[idx1].bufPrintZ(&text_buffer);
             // color tuning
-            const colors = getColors(idx1);
+            const colors = getColors(mem[idx1]);
 
-            const texture = SDLex.textureFromText(num_str, design.font, colors.fg, renderer);
+            const texture = try mem[idx1].createTexture(renderer);
             var block_rect = SDLex.convertSDLRect(blockRect(idx1));
             block_rect.x -= @as(c_int, @intCast(index.x * batch_size.width * design.block.full_size.width)) + design.position.x;
             block_rect.y -= @as(c_int, @intCast(index.y * batch_size.height * design.block.full_size.height)) + design.position.y;
 
             try renderer.setColor(colors.bg);
             try renderer.fillRect(block_rect);
-            block_rect.x += design.block.padding.width / 2;
-            block_rect.y += design.block.padding.height / 2;
-            block_rect.width = design.block.size.width;
-            block_rect.height = design.block.size.height;
+            //block_rect.x += design.block.padding.width / 2;
+            //block_rect.y += design.block.padding.height / 2;
+            //block_rect.width = design.block.size.width;
+            //block_rect.height = design.block.size.height;
 
             try renderer.copy(texture, block_rect, null);
             texture.destroy();
@@ -197,47 +242,47 @@ fn initBatch(index: idx2D, renderer: SDL.Renderer) !void {
     }
 
     //draw grid:
-    const max_width = design.block.full_size.width * columns;
-    const max_height = design.block.full_size.height * rows;
+    //const max_width = design.block.full_size.width * columns;
+    //const max_height = design.block.full_size.height * rows;
 
-    try renderer.setColor(design.block.grid_color);
-    for (0..batch_size.height + 1) |row| {
-        var rect = SDL.Rectangle{
-            .x = 0,
-            .y = @intCast(@as(c_int, @intCast(row * design.block.full_size.height)) - design.block.padding.height / 4),
-            .width = @intCast(batch_pixel_size.width + design.block.padding.width),
-            .height = design.block.padding.height / 2,
-        };
+    //try renderer.setColor(design.block.grid_color);
+    //for (0..batch_size.height + 1) |row| {
+    //    var rect = SDL.Rectangle{
+    //        .x = 0,
+    //        .y = @intCast(@as(c_int, @intCast(row * design.block.full_size.height)) - design.block.padding.height / 4),
+    //        .width = @intCast(batch_pixel_size.width + design.block.padding.width),
+    //        .height = design.block.padding.height / 2,
+    //    };
 
-        //prevent grid drawing on empty texture
-        const batch_limit_width = max_width - batch_pixel_size.width * index.x;
-        const batch_limit_height = max_height - batch_pixel_size.height * index.y;
-        rect.width = @intCast(@min(batch_limit_width, @as(usize, @intCast(rect.width))));
+    //    //prevent grid drawing on empty texture
+    //    const batch_limit_width = max_width - batch_pixel_size.width * index.x;
+    //    const batch_limit_height = max_height - batch_pixel_size.height * index.y;
+    //    rect.width = @intCast(@min(batch_limit_width, @as(usize, @intCast(rect.width))));
 
-        if (batch_limit_height > rect.y)
-            try renderer.fillRect(rect);
-    }
+    //    if (batch_limit_height > rect.y)
+    //        try renderer.fillRect(rect);
+    //}
 
-    for (0..batch_size.width + 1) |column| {
-        var rect = SDL.Rectangle{
-            .y = 0,
-            .x = @intCast(@as(c_int, @intCast(column * design.block.full_size.width)) - design.block.padding.width / 4),
-            .height = @intCast(batch_pixel_size.height + design.block.padding.height),
-            .width = design.block.padding.width / 2,
-        };
-        //prevent grid drawing on empty texture
-        const batch_limit_width = max_width - batch_pixel_size.width * index.x;
-        const batch_limit_height = max_height - batch_pixel_size.height * index.y;
-        rect.height = @intCast(@min(batch_limit_height, @as(usize, @intCast(rect.height))));
+    //for (0..batch_size.width + 1) |column| {
+    //    var rect = SDL.Rectangle{
+    //        .y = 0,
+    //        .x = @intCast(@as(c_int, @intCast(column * design.block.full_size.width)) - design.block.padding.width / 4),
+    //        .height = @intCast(batch_pixel_size.height + design.block.padding.height),
+    //        .width = design.block.padding.width / 2,
+    //    };
+    //    //prevent grid drawing on empty texture
+    //    const batch_limit_width = max_width - batch_pixel_size.width * index.x;
+    //    const batch_limit_height = max_height - batch_pixel_size.height * index.y;
+    //    rect.height = @intCast(@min(batch_limit_height, @as(usize, @intCast(rect.height))));
 
-        if (rect.x < batch_limit_width)
-            try renderer.fillRect(rect);
-    }
+    //    if (rect.x < batch_limit_width)
+    //        try renderer.fillRect(rect);
+    //}
 }
 
 fn updateValue(index: idx2D, renderer: SDL.Renderer) !void {
-    var text_buffer: [12]u8 = undefined;
-    const colors = getColors(index.to1D(columns));
+    const block = mem[index.to1D(columns)];
+    const colors = getColors(block);
     const last_target = renderer.getTarget();
     const last_color = try SDL.Renderer.getColor(renderer);
     defer renderer.setColor(last_color) catch {
@@ -246,7 +291,6 @@ fn updateValue(index: idx2D, renderer: SDL.Renderer) !void {
     defer renderer.setTarget(last_target) catch {
         @panic("could not  set renderer target");
     };
-    const num_str = mem[index.to1D(columns)].bufPrintZ(&text_buffer);
     //std.debug.print("num_str: {s}\n", .{num_str});
     const owning_batch = batchOf(index.to1D(columns));
     const owning_batch_texture = batch_tex[owning_batch.y][owning_batch.x];
@@ -254,15 +298,14 @@ fn updateValue(index: idx2D, renderer: SDL.Renderer) !void {
     try renderer.setColor(colors.bg);
     var block_rect = SDLex.convertSDLRect(blockRect(index.to1D(columns)));
 
-    //make the block rect fit exactly in place without covering the padding.
-    block_rect.width -= design.block.padding.width / 2;
-    block_rect.height -= design.block.padding.height / 2;
-    block_rect.x -= @as(c_int, @intCast(owning_batch.x * batch_size.width * design.block.full_size.width)) + design.position.x;
-    block_rect.y -= @as(c_int, @intCast(owning_batch.y * batch_size.height * design.block.full_size.height)) + design.position.y;
-    block_rect.x += design.block.padding.width / 4;
-    block_rect.y += design.block.padding.height / 4;
+    // adjust block rect to be relative to owning batch
+    block_rect.x -= design.position.x;
+    block_rect.x = @mod(block_rect.x, batch_size.width * design.block.full_size.width);
+    block_rect.y -= design.position.y;
+    block_rect.y = @mod(block_rect.y, batch_size.height * design.block.full_size.height);
 
-    const texture = SDLex.textureFromText(num_str, design.font, colors.fg, renderer);
+    std.debug.print("{any}\n", .{block_rect});
+    const texture = mem[index.to1D(columns)].createTexture(renderer) catch @panic("failed to create updated texture");
     try renderer.fillRect(block_rect);
     try renderer.copy(texture, block_rect, null);
     texture.destroy();
@@ -417,8 +460,8 @@ fn randomNum(seed: i64) i64 {
     const word: i64 = ((state >> @as(u6, @truncate(@as(u64, @intCast(state)) >> 28)) +% 4) ^ state) *% 277803737;
     return (word >> 22) ^ word;
 }
-fn getColors(idx: usize) design.block.Colors {
-    return switch (mem[idx].owner) {
+fn getColors(block: Block) design.block.Colors {
+    return switch (block.owner) {
         .free => design.block.free,
         .taken => design.block.taken,
         .user, .pointer => design.block.user,
